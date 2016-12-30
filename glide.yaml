@@ -1,0 +1,12 @@
+package: humpback-agent
+ignore:
+- golang.org/x
+import:
+- package: github.com/astaxie/beego
+  subpackages:
+  - context
+  - plugins/cors
+- package: github.com/docker/docker
+  version: ^1.12.5
+  subpackages:
+  - client
