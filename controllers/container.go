@@ -66,7 +66,7 @@ func (ctCtrl *ContainerController) GetContainers() {
 
 // GetContainerLogs - get container
 func (ctCtrl *ContainerController) GetContainerLogs() {
-	tail := ctCtrl.GetString("tail", "100")
+	tail := ctCtrl.GetString("tail")
 
 	since := ctCtrl.Ctx.Input.Query("since")
 	if since != "" {
@@ -81,8 +81,10 @@ func (ctCtrl *ContainerController) GetContainerLogs() {
 		ShowStdout: true,
 		ShowStderr: true,
 		Since:      since,
-		Tail:       tail,
 		Timestamps: false,
+	}
+	if tail != "" {
+		option.Tail = tail
 	}
 	res, err := dockerClient.ContainerLogs(context.Background(), containerID, option)
 	if err != nil {
@@ -168,9 +170,6 @@ func (ctCtrl *ContainerController) CreateContainer() {
 		config.Cmd = strings.SplitN(reqBody.Command, " ", -1)
 	}
 
-	if reqBody.NetworkMode == "" {
-		reqBody.NetworkMode = "bridge"
-	}
 	if strings.ToLower(reqBody.NetworkMode) == "host" {
 		config.Hostname = ""
 	}
@@ -182,6 +181,9 @@ func (ctCtrl *ContainerController) CreateContainer() {
 		ExtraHosts:      reqBody.ExtraHosts,
 		ShmSize:         reqBody.SHMSize,
 		Links:           reqBody.Links,
+	}
+	if reqBody.Ulimits != nil {
+		hostconfig.Ulimits = reqBody.Ulimits
 	}
 	hostconfig.CPUShares = reqBody.CPUShares
 	hostconfig.Memory = reqBody.Memory * 1024 * 1024
@@ -232,6 +234,10 @@ func (ctCtrl *ContainerController) CreateContainer() {
 
 	err = dockerClient.ContainerStart(context.Background(), res.ID, types.ContainerStartOptions{})
 	if err != nil {
+		dockerClient.ContainerRemove(context.Background(), res.ID, types.ContainerRemoveOptions{
+			RemoveVolumes: true,
+			Force:         true,
+		})
 		ctCtrl.Error(500, err.Error(), 20001)
 	}
 	result := map[string]interface{}{

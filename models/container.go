@@ -5,14 +5,10 @@ import (
 	"strings"
 
 	"github.com/docker/docker/api/types"
+	units "github.com/docker/go-units"
 )
 
 var (
-	NetworkModeType = map[string]interface{}{
-		"host":   true,
-		"bridge": true,
-	}
-
 	RestartPolicyType = map[string]interface{}{
 		"no":         true,
 		"always":     true,
@@ -51,6 +47,7 @@ type Container struct {
 	Memory            int64            `json:"Memory,omitempty"`
 	SHMSize           int64            `json:"SHMSize,omitempty"`
 	Links             []string         `json:"Links"`
+	Ulimits           []*units.Ulimit  `json:"Ulimits"`
 }
 
 // PortBinding - define container port binding info struct
@@ -170,4 +167,5 @@ func (container *Container) Parse(origContainer *types.ContainerJSON) {
 	container.Memory = origContainer.HostConfig.Memory / 1024 / 1024
 	container.SHMSize = origContainer.HostConfig.ShmSize
 	container.Links = origContainer.HostConfig.Links
+	container.Ulimits = origContainer.HostConfig.Ulimits
 }
