@@ -2,11 +2,10 @@ package controllers
 
 import (
 	"encoding/json"
-	"humpback-agent/config"
 	"os"
 	"strings"
-
-	"humpback-agent/models"
+	"humpback-agent/config"
+	"common/models"
 
 	"github.com/astaxie/beego"
 	"github.com/docker/docker/client"

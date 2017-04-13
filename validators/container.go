@@ -2,8 +2,8 @@ package validators
 
 import (
 	"encoding/json"
-	"humpback-agent/models"
 	"strings"
+	"common/models"
 
 	"github.com/astaxie/beego/context"
 )

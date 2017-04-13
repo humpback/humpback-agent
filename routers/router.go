@@ -9,7 +9,8 @@ import (
 
 // Init - Init routers
 func Init() {
-	faqRouter := beego.NSRouter("/humpback-agent-faq", &controllers.FaqController{})
+	faqRouter := beego.NSRouter("/ping", &controllers.FaqController{})
+	infoRouter := beego.NSRouter("/dockerinfo", &controllers.InfoController{})
 
 	imageRouters := beego.NSNamespace("/images",
 		beego.NSRouter("/", &controllers.ImageController{}, "get:GetImages;post:PullImage"),
@@ -23,12 +24,21 @@ func Init() {
 		beego.NSRouter("/:containerid/stats", &controllers.ContainerController{}, "get:GetContainerStats"),
 	)
 
-	agentSpace := beego.NewNamespace("/v1",
+	ns := beego.NewNamespace("/dockerapi/v2",
 		faqRouter,
+		infoRouter,
 		imageRouters,
 		containerRouters,
 	)
-	beego.AddNamespace(agentSpace)
 
+	agentSpace := beego.NewNamespace("/v1",
+		faqRouter,
+		infoRouter,
+		imageRouters,
+		containerRouters,
+	)
+	beego.AddNamespace(ns, agentSpace)
+
+	beego.InsertFilter("/dockerapi/v2/containers", beego.BeforeExec, validators.CreateContainerValidator)
 	beego.InsertFilter("/v1/containers", beego.BeforeExec, validators.CreateContainerValidator)
 }

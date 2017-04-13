@@ -3,24 +3,26 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
-	"humpback-agent/models"
 	"io/ioutil"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
+	"humpback-agent/config"
+	"common/models"
 
+	gonetwork "github.com/humpback/gounits/network"
+	"github.com/astaxie/beego"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/go-connections/nat"
-
-	"github.com/astaxie/beego"
-
 	"golang.org/x/net/context"
 )
 
 // ContainerController - handle http request for container
 type ContainerController struct {
+	sync.Mutex
 	baseController
 }
 
@@ -127,22 +129,32 @@ func (ctCtrl *ContainerController) GetContainerStats() {
 	if readIOErr != nil {
 		ctCtrl.Error(500, err.Error())
 	}
-	containerStatsFromDocker := models.ContainerStatsFromDocker{}
+	stats := models.ContainerStatsFromDocker{}
 
-	if err := json.Unmarshal(resData, &containerStatsFromDocker); err != nil {
+	if err := json.Unmarshal(resData, &stats); err != nil {
 		ctCtrl.Error(500, err.Error())
 	}
 
 	containerStats := models.ContainerStats{}
-	containerStats.NetworkIn = int64(containerStatsFromDocker.Network.RxBytes / 1024)
-	containerStats.NetworkOut = int64(containerStatsFromDocker.Network.TxBytes / 1024)
-	containerStats.MemoryUsage = int64(containerStatsFromDocker.MemoryStats.Usage / 1024)
-	containerStats.MemoryLimit = int64(containerStatsFromDocker.MemoryStats.Limit / 1024)
+	containerStats.NetworkIn = int64(stats.Network.RxBytes / 1024)
+	containerStats.NetworkOut = int64(stats.Network.TxBytes / 1024)
+	containerStats.MemoryUsage = int64(stats.MemoryStats.Usage / 1024)
+	containerStats.MemoryLimit = int64(stats.MemoryStats.Limit / 1024)
+	containerStats.MemoryPercent = (stats.MemoryStats.Usage / stats.MemoryStats.Limit) * 100
 
-	cpuDelta := containerStatsFromDocker.CPUStats.CPUUsage.TotalUsage - containerStatsFromDocker.PreCPUStats.CPUUsage.TotalUsage
-	systemDelta := containerStatsFromDocker.CPUStats.SystemCPUUsage - containerStatsFromDocker.PreCPUStats.SystemCPUUsage
+	cpuDelta := stats.CPUStats.CPUUsage.TotalUsage - stats.PreCPUStats.CPUUsage.TotalUsage
+	systemDelta := stats.CPUStats.SystemCPUUsage - stats.PreCPUStats.SystemCPUUsage
 	resultCPUUsage := cpuDelta / systemDelta * 100
 	containerStats.CPUUsage = fmt.Sprintf("%.2f", resultCPUUsage)
+
+	for _, blk := range stats.BlkioStats.IOServiceBytesRecursive {
+		if blk.Op == "Read" {
+			containerStats.IOBytesRead = blk.Value
+		}
+		if blk.Op == "Write" {
+			containerStats.IOBytesWrite = blk.Value
+		}
+	}
 
 	ctCtrl.JSON(containerStats)
 }
@@ -209,6 +221,17 @@ func (ctCtrl *ContainerController) CreateContainer() {
 				},
 			}
 			portBinding[privatePort] = tempPublicPort
+		} else {
+			hostPort := ctCtrl.makeSystemIdlePort(item.Type)
+			if hostPort > 0 {
+				tempPublicPort := []nat.PortBinding{
+					nat.PortBinding{
+						HostIP:   item.IP,
+						HostPort: strconv.Itoa((int)(hostPort)),
+					},
+				}
+				portBinding[privatePort] = tempPublicPort
+			}
 		}
 	}
 	hostconfig.PortBindings = portBinding
@@ -378,4 +401,39 @@ func upgradeContainer(id, newTag string) (string, int, error) {
 		return res.ID, 20008, err
 	}
 	return res.ID, 0, nil
+}
+
+func (ctCtrl *ContainerController) makeSystemIdlePort(kind string) int {
+
+	var (
+		err     error
+		minPort int
+		maxPort int
+	)
+
+	conf := config.GetConfig()
+	if !conf.DockerClusterEnabled {
+		return 0
+	}
+
+	rangePorts := strings.SplitN(conf.DockerClusterPortsRange, "-", 2)
+	if len(rangePorts) != 2 {
+		return 0
+	}
+
+	if minPort, err = strconv.Atoi(rangePorts[0]); err != nil {
+		return 0
+	}
+
+	if maxPort, err = strconv.Atoi(rangePorts[1]); err != nil {
+		return 0
+	}
+
+	ctCtrl.Lock()
+	defer ctCtrl.Unlock()
+	port, err := gonetwork.GrabSystemRangeIdlePort(kind, (uint32)(minPort), (uint32)(maxPort))
+	if err != nil {
+		return 0
+	}
+	return (int)(port)
 }

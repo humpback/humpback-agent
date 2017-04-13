@@ -1,5 +1,13 @@
-# humpback-agent
-Wrap docker remote API with golang.
+# Humpback Agent Intro
+
+`Current Version: 1.1.1`
+
+Run it in docker
+---
+- GDEV `sudo docker run -d -ti --name=humpback-agent --net=host -e DOCKER_API_VERSION=v1.20 -v /var/run/:/var/run/:rw --restart=always docker.neg/bts/humpback-agent:1.1.1`
+- PRD `sudo docker run -d -ti --name=humpback-agent --net=host -e DOCKER_API_VERSION=v1.20 -v /var/run/:/var/run/:rw --restart=always humpback-hub.newegg.org/bts/humpback-agent:1.1.1`
+
+需要指定 `DOCKER_API_VERSION` 环境变量, 默认 `v1.20`, 使用`docker version`查看`Client`中的`API Version`
 
 Get images
 ---
@@ -202,7 +210,7 @@ Start/Stop... container
 /*Request*/
 {
   "Action": "[start|stop|restart|kill|pause|unpause]",
-  "Contianer": "eggkeeper"
+  "Container": "eggkeeper"
 }	
 ```
 
