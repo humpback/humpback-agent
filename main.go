@@ -1,13 +1,14 @@
 package main
 
 import (
-	"os"
-	"os/signal"
-	"syscall"
-	"humpback-center/cluster"
 	"humpback-agent/config"
 	"humpback-agent/controllers"
 	"humpback-agent/routers"
+	"humpback-center/cluster"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/plugins/cors"
 )

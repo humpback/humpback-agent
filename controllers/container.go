@@ -1,28 +1,26 @@
 package controllers
 
 import (
+	"common/models"
 	"encoding/json"
 	"fmt"
+	"humpback-agent/config"
 	"io/ioutil"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
-	"humpback-agent/config"
-	"common/models"
 
-	gonetwork "github.com/humpback/gounits/network"
 	"github.com/astaxie/beego"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/go-connections/nat"
+	gonetwork "github.com/humpback/gounits/network"
 	"golang.org/x/net/context"
 )
 
 // ContainerController - handle http request for container
 type ContainerController struct {
-	sync.Mutex
 	baseController
 }
 
@@ -93,9 +91,13 @@ func (ctCtrl *ContainerController) GetContainerLogs() {
 		ctCtrl.Error(500, err.Error())
 	}
 	defer res.Close()
+
 	stdout, _ := ioutil.ReadAll(res)
 	result := strings.Split(string(stdout), "\n")
 	result = result[0 : len(result)-1]
+	for i, item := range result {
+		result[i] = string([]byte(item)[8:])
+	}
 	ctCtrl.JSON(result)
 }
 
@@ -429,8 +431,6 @@ func (ctCtrl *ContainerController) makeSystemIdlePort(kind string) int {
 		return 0
 	}
 
-	ctCtrl.Lock()
-	defer ctCtrl.Unlock()
 	port, err := gonetwork.GrabSystemRangeIdlePort(kind, (uint32)(minPort), (uint32)(maxPort))
 	if err != nil {
 		return 0
