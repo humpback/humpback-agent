@@ -24,7 +24,12 @@ type ContainerController struct {
 	baseController
 }
 
+type containerError struct {
+	Error error
+}
+
 var containerID string
+var clientTimeout = 15 * time.Second
 
 // Prepare - format path before exec real action
 func (ctCtrl *ContainerController) Prepare() {
@@ -96,7 +101,10 @@ func (ctCtrl *ContainerController) GetContainerLogs() {
 	result := strings.Split(string(stdout), "\n")
 	result = result[0 : len(result)-1]
 	for i, item := range result {
-		result[i] = string([]byte(item)[8:])
+		bytes := []byte(item)
+		if len(bytes) > 8 {
+			result[i] = string(bytes[8:])
+		}
 	}
 	ctCtrl.JSON(result)
 }
@@ -287,7 +295,7 @@ func (ctCtrl *ContainerController) OperateContainer() {
 		err = dockerClient.ContainerStart(context.Background(), reqBody.Container, types.ContainerStartOptions{})
 		break
 	case "stop":
-		err = dockerClient.ContainerStop(context.Background(), reqBody.Container, &duration)
+		err = stopContainer(reqBody.Container)
 		break
 	case "restart":
 		err = dockerClient.ContainerRestart(context.Background(), reqBody.Container, &duration)
@@ -322,12 +330,28 @@ func (ctCtrl *ContainerController) OperateContainer() {
 
 // DeleteContainer - delete container
 func (ctCtrl *ContainerController) DeleteContainer() {
-	removeOptions := types.ContainerRemoveOptions{
-		RemoveVolumes: true,
+
+	ctx, cancel := context.WithTimeout(context.Background(), clientTimeout)
+	removeCh := make(chan containerError, 1)
+	var err error
+	go func(container string, ch chan<- containerError) {
+		removeError := containerError{Error: nil}
+		removeOptions := types.ContainerRemoveOptions{
+			RemoveVolumes: true,
+		}
+		force, _ := ctCtrl.GetBool("force", false)
+		removeOptions.Force = force
+		removeError.Error = dockerClient.ContainerRemove(context.Background(), containerID, removeOptions)
+		ch <- removeError
+	}(containerID, removeCh)
+	select {
+	case removeError := <-removeCh:
+		err = removeError.Error
+	case <-ctx.Done():
+		err = fmt.Errorf("remove container %s timeout", containerID)
 	}
-	force, _ := ctCtrl.GetBool("force", false)
-	removeOptions.Force = force
-	err := dockerClient.ContainerRemove(context.Background(), containerID, removeOptions)
+	cancel()
+	close(removeCh)
 	if err != nil {
 		if strings.Index(err.Error(), "No such container") != -1 {
 			ctCtrl.Error(404, err.Error())
@@ -364,9 +388,8 @@ func upgradeContainer(id, newTag string) (string, int, error) {
 	}
 
 	if container.State.Running {
-		duration := time.Second * 10
 		beego.Debug("UPGRADE - Begin to stop container info for " + id)
-		if err := dockerClient.ContainerStop(context.Background(), id, &duration); err != nil {
+		if err := stopContainer(id); err != nil {
 			return "", 20005, err
 		}
 	}
@@ -403,6 +426,28 @@ func upgradeContainer(id, newTag string) (string, int, error) {
 		return res.ID, 20008, err
 	}
 	return res.ID, 0, nil
+}
+
+func stopContainer(id string) error {
+
+	ctx, cancel := context.WithTimeout(context.Background(), clientTimeout)
+	stopCh := make(chan containerError, 1)
+	var err error
+	go func(container string, ch chan<- containerError) {
+		stopError := containerError{Error: nil}
+		duration := time.Second * 10
+		stopError.Error = dockerClient.ContainerStop(context.Background(), container, &duration)
+		ch <- stopError
+	}(id, stopCh)
+	select {
+	case stopError := <-stopCh:
+		err = stopError.Error
+	case <-ctx.Done():
+		err = fmt.Errorf("stop container %s timeout", id)
+	}
+	cancel()
+	close(stopCh)
+	return err
 }
 
 func (ctCtrl *ContainerController) makeSystemIdlePort(kind string) int {
