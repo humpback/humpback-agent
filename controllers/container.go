@@ -24,16 +24,12 @@ type ContainerController struct {
 	baseController
 }
 
-<<<<<<< HEAD
 type containerError struct {
 	Error error
 }
 
 var containerID string
 var clientTimeout = 15 * time.Second
-=======
-var containerID string
->>>>>>> a3577c9e4a312a6b1b7329b2e6f9e95fcb25a714
 
 // Prepare - format path before exec real action
 func (ctCtrl *ContainerController) Prepare() {
@@ -105,19 +101,14 @@ func (ctCtrl *ContainerController) GetContainerLogs() {
 	result := strings.Split(string(stdout), "\n")
 	result = result[0 : len(result)-1]
 	for i, item := range result {
-<<<<<<< HEAD
 		bytes := []byte(item)
 		if len(bytes) > 8 {
 			result[i] = string(bytes[8:])
 		}
-=======
-		result[i] = string([]byte(item)[8:])
->>>>>>> a3577c9e4a312a6b1b7329b2e6f9e95fcb25a714
 	}
 	ctCtrl.JSON(result)
 }
 
-<<<<<<< HEAD
 // GetAllContainerStats - get all container's stats, include (cpu/memory/network...)
 func (ctCtrl *ContainerController) GetAllContainerStats() {
 	option := types.ContainerListOptions{
@@ -155,29 +146,6 @@ func getContainerStats(name string, id string, ch chan models.ContainerStatsWith
 		result.Error = err
 		ch <- result
 		return
-=======
-// GetContainerStats - get container's stats, include (cpu/memory/network...)
-func (ctCtrl *ContainerController) GetContainerStats() {
-	container, err := dockerClient.ContainerInspect(context.Background(), containerID)
-	if err != nil {
-		if strings.Index(err.Error(), "No such container") != -1 {
-			ctCtrl.Error(404, err.Error())
-		} else {
-			ctCtrl.Error(500, err.Error())
-		}
-	}
-	if !container.State.Running {
-		ctCtrl.Error(500, "Container is not running")
-	}
-
-	res, err := dockerClient.ContainerStats(context.Background(), containerID, false)
-	if err != nil {
-		if strings.Index(err.Error(), "No such container") != -1 {
-			ctCtrl.Error(404, err.Error())
-		} else {
-			ctCtrl.Error(500, err.Error())
-		}
->>>>>>> a3577c9e4a312a6b1b7329b2e6f9e95fcb25a714
 	}
 	if res.Body != nil {
 		defer res.Body.Close()
@@ -185,7 +153,6 @@ func (ctCtrl *ContainerController) GetContainerStats() {
 
 	resData, readIOErr := ioutil.ReadAll(res.Body)
 	if readIOErr != nil {
-<<<<<<< HEAD
 		result.Error = err
 		ch <- result
 		return
@@ -197,17 +164,6 @@ func (ctCtrl *ContainerController) GetContainerStats() {
 		return
 	}
 
-=======
-		ctCtrl.Error(500, err.Error())
-	}
-	stats := models.ContainerStatsFromDocker{}
-
-	if err := json.Unmarshal(resData, &stats); err != nil {
-		ctCtrl.Error(500, err.Error())
-	}
-
-	containerStats := models.ContainerStats{}
->>>>>>> a3577c9e4a312a6b1b7329b2e6f9e95fcb25a714
 	containerStats.NetworkIn = int64(stats.Network.RxBytes / 1024)
 	containerStats.NetworkOut = int64(stats.Network.TxBytes / 1024)
 	containerStats.MemoryUsage = int64(stats.MemoryStats.Usage / 1024)
@@ -227,7 +183,6 @@ func (ctCtrl *ContainerController) GetContainerStats() {
 			containerStats.IOBytesWrite = blk.Value
 		}
 	}
-<<<<<<< HEAD
 	result.Stats = containerStats
 	ch <- result
 }
@@ -254,10 +209,6 @@ func (ctCtrl *ContainerController) GetContainerStats() {
 	} else {
 		ctCtrl.JSON(containerStatsWithError.Stats)
 	}
-=======
-
-	ctCtrl.JSON(containerStats)
->>>>>>> a3577c9e4a312a6b1b7329b2e6f9e95fcb25a714
 }
 
 // CreateContainer - create container
@@ -386,11 +337,7 @@ func (ctCtrl *ContainerController) OperateContainer() {
 		err = dockerClient.ContainerStart(context.Background(), reqBody.Container, types.ContainerStartOptions{})
 		break
 	case "stop":
-<<<<<<< HEAD
 		err = stopContainer(reqBody.Container)
-=======
-		err = dockerClient.ContainerStop(context.Background(), reqBody.Container, &duration)
->>>>>>> a3577c9e4a312a6b1b7329b2e6f9e95fcb25a714
 		break
 	case "restart":
 		err = dockerClient.ContainerRestart(context.Background(), reqBody.Container, &duration)
@@ -425,7 +372,6 @@ func (ctCtrl *ContainerController) OperateContainer() {
 
 // DeleteContainer - delete container
 func (ctCtrl *ContainerController) DeleteContainer() {
-<<<<<<< HEAD
 
 	ctx, cancel := context.WithTimeout(context.Background(), clientTimeout)
 	removeCh := make(chan containerError, 1)
@@ -448,14 +394,6 @@ func (ctCtrl *ContainerController) DeleteContainer() {
 	}
 	cancel()
 	close(removeCh)
-=======
-	removeOptions := types.ContainerRemoveOptions{
-		RemoveVolumes: true,
-	}
-	force, _ := ctCtrl.GetBool("force", false)
-	removeOptions.Force = force
-	err := dockerClient.ContainerRemove(context.Background(), containerID, removeOptions)
->>>>>>> a3577c9e4a312a6b1b7329b2e6f9e95fcb25a714
 	if err != nil {
 		if strings.Index(err.Error(), "No such container") != -1 {
 			ctCtrl.Error(404, err.Error())
@@ -492,14 +430,8 @@ func upgradeContainer(id, newTag string) (string, int, error) {
 	}
 
 	if container.State.Running {
-<<<<<<< HEAD
 		beego.Debug("UPGRADE - Begin to stop container info for " + id)
 		if err := stopContainer(id); err != nil {
-=======
-		duration := time.Second * 10
-		beego.Debug("UPGRADE - Begin to stop container info for " + id)
-		if err := dockerClient.ContainerStop(context.Background(), id, &duration); err != nil {
->>>>>>> a3577c9e4a312a6b1b7329b2e6f9e95fcb25a714
 			return "", 20005, err
 		}
 	}
@@ -538,7 +470,6 @@ func upgradeContainer(id, newTag string) (string, int, error) {
 	return res.ID, 0, nil
 }
 
-<<<<<<< HEAD
 func stopContainer(id string) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), clientTimeout)
@@ -561,8 +492,6 @@ func stopContainer(id string) error {
 	return err
 }
 
-=======
->>>>>>> a3577c9e4a312a6b1b7329b2e6f9e95fcb25a714
 func (ctCtrl *ContainerController) makeSystemIdlePort(kind string) int {
 
 	var (
