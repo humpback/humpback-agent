@@ -19,7 +19,10 @@ func Init() {
 
 	containerRouters := beego.NSNamespace("/containers",
 		beego.NSRouter("/", &controllers.ContainerController{}, "get:GetContainers;post:CreateContainer;put:OperateContainer"),
+<<<<<<< HEAD
 		beego.NSRouter("/stats", &controllers.ContainerController{}, "get:GetAllContainerStats"),
+=======
+>>>>>>> a3577c9e4a312a6b1b7329b2e6f9e95fcb25a714
 		beego.NSRouter("/:containerid", &controllers.ContainerController{}, "get:GetContainer;delete:DeleteContainer"),
 		beego.NSRouter("/:containerid/logs", &controllers.ContainerController{}, "get:GetContainerLogs"),
 		beego.NSRouter("/:containerid/stats", &controllers.ContainerController{}, "get:GetContainerStats"),

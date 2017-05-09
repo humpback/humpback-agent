@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Humpback Agent Intro
 
 `Current Version: 1.1.1`
@@ -250,3 +251,14 @@ Delete container
 
 # Other
 执行 `glide install` 安装相关依赖包
+=======
+## humpback-agent
+
+Humpback Agent 主要为 [Humpback](https://github.com/humpback/humpback) 平台提供容器访问功能。[API 文档](https://github.com/humpback/humpback-agent/wiki)
+
+## License
+
+Apache-2.0
+
+
+>>>>>>> a3577c9e4a312a6b1b7329b2e6f9e95fcb25a714
