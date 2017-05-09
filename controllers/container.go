@@ -109,27 +109,43 @@ func (ctCtrl *ContainerController) GetContainerLogs() {
 	ctCtrl.JSON(result)
 }
 
-// GetContainerStats - get container's stats, include (cpu/memory/network...)
-func (ctCtrl *ContainerController) GetContainerStats() {
-	container, err := dockerClient.ContainerInspect(context.Background(), containerID)
-	if err != nil {
-		if strings.Index(err.Error(), "No such container") != -1 {
-			ctCtrl.Error(404, err.Error())
-		} else {
-			ctCtrl.Error(500, err.Error())
-		}
+// GetAllContainerStats - get all container's stats, include (cpu/memory/network...)
+func (ctCtrl *ContainerController) GetAllContainerStats() {
+	option := types.ContainerListOptions{
+		All: false,
 	}
-	if !container.State.Running {
-		ctCtrl.Error(500, "Container is not running")
+	containers, err := dockerClient.ContainerList(context.Background(), option)
+	if err != nil {
+		ctCtrl.Error(500, err.Error())
 	}
 
-	res, err := dockerClient.ContainerStats(context.Background(), containerID, false)
+	chs := make([]chan models.ContainerStatsWithError, len(containers))
+	stats := make([]models.ContainerStats, len(containers))
+	for i, container := range containers {
+		chs[i] = make(chan models.ContainerStatsWithError)
+		go getContainerStats(container.Names[0], container.ID, chs[i])
+	}
+
+	for i, ch := range chs {
+		value := <-ch
+		stats[i] = value.Stats
+	}
+
+	ctCtrl.JSON(stats)
+}
+
+func getContainerStats(name string, id string, ch chan models.ContainerStatsWithError) {
+	result := models.ContainerStatsWithError{}
+	containerStats := models.ContainerStats{}
+	containerStats.ContainerName = strings.Replace(name, "/", "", 1)
+	containerStats.ContainerID = id
+
+	result.Stats = containerStats
+	res, err := dockerClient.ContainerStats(context.Background(), id, false)
 	if err != nil {
-		if strings.Index(err.Error(), "No such container") != -1 {
-			ctCtrl.Error(404, err.Error())
-		} else {
-			ctCtrl.Error(500, err.Error())
-		}
+		result.Error = err
+		ch <- result
+		return
 	}
 	if res.Body != nil {
 		defer res.Body.Close()
@@ -137,15 +153,17 @@ func (ctCtrl *ContainerController) GetContainerStats() {
 
 	resData, readIOErr := ioutil.ReadAll(res.Body)
 	if readIOErr != nil {
-		ctCtrl.Error(500, err.Error())
+		result.Error = err
+		ch <- result
+		return
 	}
 	stats := models.ContainerStatsFromDocker{}
-
 	if err := json.Unmarshal(resData, &stats); err != nil {
-		ctCtrl.Error(500, err.Error())
+		result.Error = err
+		ch <- result
+		return
 	}
 
-	containerStats := models.ContainerStats{}
 	containerStats.NetworkIn = int64(stats.Network.RxBytes / 1024)
 	containerStats.NetworkOut = int64(stats.Network.TxBytes / 1024)
 	containerStats.MemoryUsage = int64(stats.MemoryStats.Usage / 1024)
@@ -165,8 +183,32 @@ func (ctCtrl *ContainerController) GetContainerStats() {
 			containerStats.IOBytesWrite = blk.Value
 		}
 	}
+	result.Stats = containerStats
+	ch <- result
+}
 
-	ctCtrl.JSON(containerStats)
+// GetContainerStats - get container's stats, include (cpu/memory/network...)
+func (ctCtrl *ContainerController) GetContainerStats() {
+	container, err := dockerClient.ContainerInspect(context.Background(), containerID)
+	if err != nil {
+		if strings.Index(err.Error(), "No such container") != -1 {
+			ctCtrl.Error(404, err.Error())
+		} else {
+			ctCtrl.Error(500, err.Error())
+		}
+	}
+	if !container.State.Running {
+		ctCtrl.Error(500, "Container is not running")
+	}
+
+	ch := make(chan models.ContainerStatsWithError)
+	go getContainerStats(container.Name, container.ID, ch)
+	containerStatsWithError := <-ch
+	if containerStatsWithError.Error != nil {
+		ctCtrl.Error(500, containerStatsWithError.Error)
+	} else {
+		ctCtrl.JSON(containerStatsWithError.Stats)
+	}
 }
 
 // CreateContainer - create container
