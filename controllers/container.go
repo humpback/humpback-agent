@@ -100,12 +100,6 @@ func (ctCtrl *ContainerController) GetContainerLogs() {
 	stdout, _ := ioutil.ReadAll(res)
 	result := strings.Split(string(stdout), "\n")
 	result = result[0 : len(result)-1]
-	for i, item := range result {
-		bytes := []byte(item)
-		if len(bytes) > 8 {
-			result[i] = string(bytes[8:])
-		}
-	}
 	ctCtrl.JSON(result)
 }
 
