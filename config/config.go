@@ -1,9 +1,9 @@
 package config
 
 import (
+	"common/models"
 	"os"
 	"strconv"
-	"common/models"
 
 	"github.com/astaxie/beego"
 )
@@ -25,6 +25,12 @@ func Init() {
 	dockerRegistryAdd := os.Getenv("DOCKER_REGISTRY_ADDRESS")
 	if dockerRegistryAdd == "" {
 		dockerRegistryAdd = beego.AppConfig.DefaultString("DOCKER_REGISTRY_ADDRESS", "docker.neg")
+	}
+
+	//若没有设置环境变量, 默认(0.0.0.0)时，则在节点注册时自动获取一个本机地址.
+	dockerAgentIPAddr := os.Getenv("DOCKER_AGENT_IPADDR")
+	if dockerAgentIPAddr == "" {
+		dockerAgentIPAddr = beego.AppConfig.DefaultString("DOCKER_AGENT_IPADDR", "0.0.0.0")
 	}
 
 	var enableBuildImg bool
@@ -85,6 +91,7 @@ func Init() {
 		DockerAPIVersion:        apiVersion,
 		DockerRegistryAddress:   dockerRegistryAdd,
 		EnableBuildImage:        enableBuildImg,
+		DockerAgentIPAddr:       dockerAgentIPAddr,
 		DockerClusterEnabled:    clusterEnabled,
 		DockerClusterURIs:       clusterURIs,
 		DockerClusterName:       clusterName,

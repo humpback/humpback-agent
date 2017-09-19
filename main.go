@@ -19,7 +19,7 @@ func main() {
 	controllers.Init()
 	routers.Init()
 
-	config.SetVersion("1.1.2")
+	config.SetVersion("1.2.4")
 
 	var conf = config.GetConfig()
 	beego.InsertFilter("*", beego.BeforeRouter, cors.Allow(&cors.Options{
@@ -34,7 +34,7 @@ func main() {
 	if conf.DockerClusterEnabled {
 		clusterOptions := cluster.NewNodeRegisterOptions(beego.BConfig.Listen.HTTPPort,
 			conf.DockerClusterName, conf.DockerClusterURIs, conf.DockerClusterHeartBeat,
-			conf.DockerClusterTTL, conf.DockerEndPoint, conf.DockerAPIVersion)
+			conf.DockerClusterTTL, conf.DockerAgentIPAddr, conf.DockerEndPoint, conf.DockerAPIVersion)
 		if err := cluster.NodeRegister(clusterOptions); err != nil {
 			beego.Error("cluster node register error:" + err.Error())
 			return
