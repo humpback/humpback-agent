@@ -221,6 +221,8 @@ func (ctCtrl *ContainerController) CreateContainer() {
 		AttachStdin:  true,
 		AttachStdout: true,
 		AttachStderr: true,
+		OpenStdin:    true,
+		Tty:          true,
 		Env:          reqBody.Env,
 		Image:        reqBody.Image,
 	}
