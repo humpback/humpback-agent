@@ -1,16 +1,16 @@
 package main
 
+import "github.com/humpback/humpback-agent/config"
+import "github.com/humpback/humpback-agent/controllers"
+import "github.com/humpback/humpback-agent/routers"
+import "github.com/humpback/humpback-center/cluster"
+import "github.com/astaxie/beego"
+import "github.com/astaxie/beego/plugins/cors"
+
 import (
-	"humpback-agent/config"
-	"humpback-agent/controllers"
-	"humpback-agent/routers"
-	"humpback-center/cluster"
 	"os"
 	"os/signal"
 	"syscall"
-
-	"github.com/astaxie/beego"
-	"github.com/astaxie/beego/plugins/cors"
 )
 
 func main() {

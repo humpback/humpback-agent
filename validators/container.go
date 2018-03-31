@@ -1,11 +1,11 @@
 package validators
 
+import "github.com/astaxie/beego/context"
+import "github.com/humpback/common/models"
+
 import (
 	"encoding/json"
 	"strings"
-	"common/models"
-
-	"github.com/astaxie/beego/context"
 )
 
 // CreateContainerValidator - validate create container request body

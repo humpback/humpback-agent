@@ -1,11 +1,8 @@
 package routers
 
-import (
-	"humpback-agent/controllers"
-	"humpback-agent/validators"
-
-	"github.com/astaxie/beego"
-)
+import "github.com/astaxie/beego"
+import "github.com/humpback/humpback-agent/controllers"
+import "github.com/humpback/humpback-agent/validators"
 
 // Init - Init routers
 func Init() {

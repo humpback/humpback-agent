@@ -1,14 +1,14 @@
 package controllers
 
+import "github.com/humpback/common/models"
+import "github.com/humpback/humpback-agent/config"
+import "github.com/astaxie/beego"
+import "github.com/docker/docker/client"
+
 import (
 	"encoding/json"
 	"os"
 	"strings"
-	"humpback-agent/config"
-	"common/models"
-
-	"github.com/astaxie/beego"
-	"github.com/docker/docker/client"
 )
 
 // baseController - Provider some common func, like 'Error()' .etc

@@ -1,16 +1,16 @@
 package controllers
 
+import "github.com/docker/docker/api/types"
+import "github.com/docker/docker/client"
+import "github.com/humpback/common/models"
+import "golang.org/x/net/context"
+
 import (
 	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
 	"time"
-	"common/models"
-
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
-	"golang.org/x/net/context"
 )
 
 // ImageController - handle http request for image
@@ -88,7 +88,7 @@ func (imgCtrl *ImageController) DeleteImage() {
 // tryPullImage - if image is exists then return or pull it from registry
 func tryPullImage(imageID string) error {
 	_, _, inspectErr := dockerClient.ImageInspectWithRaw(context.Background(), imageID)
-	if client.IsErrImageNotFound(inspectErr) {
+	if client.IsErrNotFound(inspectErr) {
 		inspectErr = nil
 		res, pullErr := dockerClient.ImagePull(context.Background(), imageID, types.ImagePullOptions{})
 		if res != nil {

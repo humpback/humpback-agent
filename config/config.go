@@ -1,11 +1,11 @@
 package config
 
+import "github.com/humpback/common/models"
+import "github.com/astaxie/beego"
+
 import (
-	"common/models"
 	"os"
 	"strconv"
-
-	"github.com/astaxie/beego"
 )
 
 var config *models.Config
