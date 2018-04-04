@@ -52,6 +52,7 @@ func (ctCtrl *ContainerController) GetContainer() {
 		ctCtrl.JSON(originalContainer)
 	} else {
 		container.Parse(&originalContainer)
+		container.LogConfig = originalContainer.HostConfig.LogConfig
 		ctCtrl.JSON(container)
 	}
 }
@@ -226,6 +227,7 @@ func (ctCtrl *ContainerController) CreateContainer() {
 		Env:          reqBody.Env,
 		Image:        reqBody.Image,
 	}
+
 	if reqBody.Command != "" {
 		config.Cmd = strings.SplitN(reqBody.Command, " ", -1)
 	}
@@ -241,10 +243,13 @@ func (ctCtrl *ContainerController) CreateContainer() {
 		ExtraHosts:      reqBody.ExtraHosts,
 		ShmSize:         reqBody.SHMSize,
 		Links:           reqBody.Links,
+		LogConfig:       reqBody.LogConfig,
 	}
+
 	if reqBody.Ulimits != nil {
 		hostconfig.Ulimits = reqBody.Ulimits
 	}
+
 	hostconfig.CPUShares = reqBody.CPUShares
 	hostconfig.Memory = reqBody.Memory * 1024 * 1024
 	if hostconfig.ShmSize == 0 {
