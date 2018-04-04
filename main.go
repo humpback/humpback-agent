@@ -19,7 +19,7 @@ func main() {
 	controllers.Init()
 	routers.Init()
 
-	config.SetVersion("1.2.4")
+	config.SetVersion("1.3.0")
 
 	var conf = config.GetConfig()
 	beego.InsertFilter("*", beego.BeforeRouter, cors.Allow(&cors.Options{
