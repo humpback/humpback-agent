@@ -9,3 +9,7 @@ version 1.1.2 (not released)
 version 1.1.1
 ---
 - Remove network mode's validate when create container.
+
+version 1.3.0
+---
+- Add container `--log-opt` property.
