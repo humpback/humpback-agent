@@ -52,6 +52,7 @@ func (ctCtrl *ContainerController) GetContainer() {
 		ctCtrl.JSON(originalContainer)
 	} else {
 		container.Parse(&originalContainer)
+		container.Labels = originalContainer.Config.Labels
 		container.LogConfig = originalContainer.HostConfig.LogConfig
 		ctCtrl.JSON(container)
 	}
@@ -204,6 +205,19 @@ func (ctCtrl *ContainerController) GetContainerStats() {
 	} else {
 		ctCtrl.JSON(containerStatsWithError.Stats)
 	}
+}
+
+// GetContainerStatus - get container's status (running, paused, restarting, killed, dead, pid, exitcode...)
+func (ctCtrl *ContainerController) GetContainerStatus() {
+	container, err := dockerClient.ContainerInspect(context.Background(), containerID)
+	if err != nil {
+		if strings.Index(err.Error(), "No such container") != -1 {
+			ctCtrl.Error(404, err.Error())
+		} else {
+			ctCtrl.Error(500, err.Error())
+		}
+	}
+	ctCtrl.JSON(container.State)
 }
 
 // CreateContainer - create container

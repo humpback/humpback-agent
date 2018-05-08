@@ -12,71 +12,88 @@ var config *models.Config
 
 // Init - Load config info
 func Init() {
-	endpoint := os.Getenv("DOCKER_ENDPOINT")
-	if endpoint == "" {
-		endpoint = beego.AppConfig.DefaultString("DOCKER_ENDPOINT", "unix:///var/run/docker.sock")
+	envEndpoint := os.Getenv("DOCKER_ENDPOINT")
+	if envEndpoint == "" {
+		envEndpoint = beego.AppConfig.DefaultString("DOCKER_ENDPOINT", "unix:///var/run/docker.sock")
 	}
 
-	apiVersion := os.Getenv("DOCKER_API_VERSION")
-	if apiVersion == "" {
-		apiVersion = beego.AppConfig.DefaultString("DOCKER_API_VERSION", "v1.20")
+	envAPIVersion := os.Getenv("DOCKER_API_VERSION")
+	if envAPIVersion == "" {
+		envAPIVersion = beego.AppConfig.DefaultString("DOCKER_API_VERSION", "v1.20")
 	}
 
-	dockerRegistryAdd := os.Getenv("DOCKER_REGISTRY_ADDRESS")
-	if dockerRegistryAdd == "" {
-		dockerRegistryAdd = beego.AppConfig.DefaultString("DOCKER_REGISTRY_ADDRESS", "docker.neg")
+	envRegistryAddr := os.Getenv("DOCKER_REGISTRY_ADDRESS")
+	if envRegistryAddr == "" {
+		envRegistryAddr = beego.AppConfig.DefaultString("DOCKER_REGISTRY_ADDRESS", "docker.neg")
 	}
 
 	//若没有设置环境变量, 默认(0.0.0.0)时，则在节点注册时自动获取一个本机地址.
-	dockerAgentIPAddr := os.Getenv("DOCKER_AGENT_IPADDR")
-	if dockerAgentIPAddr == "" {
-		dockerAgentIPAddr = beego.AppConfig.DefaultString("DOCKER_AGENT_IPADDR", "0.0.0.0")
+	envAgentIPAddr := os.Getenv("DOCKER_AGENT_IPADDR")
+	if envAgentIPAddr == "" {
+		envAgentIPAddr = beego.AppConfig.DefaultString("DOCKER_AGENT_IPADDR", "0.0.0.0")
 	}
 
-	var enableBuildImg bool
-
+	var envEnableBuildImg bool
 	if tempEnableBuildImg := os.Getenv("ENABLE_BUILD_IMAGE"); tempEnableBuildImg != "" {
 		if tempEnableBuildImg == "1" || tempEnableBuildImg == "true" {
-			enableBuildImg = true
+			envEnableBuildImg = true
 		}
 	} else {
-		enableBuildImg = beego.AppConfig.DefaultBool("ENABLE_BUILD_IMAGE", false)
+		envEnableBuildImg = beego.AppConfig.DefaultBool("ENABLE_BUILD_IMAGE", false)
 	}
 
-	clusterEnabled := false
+	envComposePath := os.Getenv("DOCKER_COMPOSE_PATH")
+	if envComposePath == "" {
+		envComposePath = beego.AppConfig.DefaultString("DOCKER_COMPOSE_PATH", "./compose_files")
+	}
+
+	var envComposePackageMaxSize int64
+	packageMaxSize := os.Getenv("DOCKER_COMPOSE_PACKAGE_MAXSIZE")
+	if packageMaxSize == "" {
+		envComposePackageMaxSize = beego.AppConfig.DefaultInt64("DOCKER_COMPOSE_PACKAGE_MAXSIZE", 67108864)
+	} else {
+		value, err := strconv.ParseInt(packageMaxSize, 10, 64)
+		if err != nil {
+			envComposePackageMaxSize = 67108864
+		} else {
+			envComposePackageMaxSize = value
+		}
+	}
+
+	envClusterEnabled := false
 	enabled := os.Getenv("DOCKER_CLUSTER_ENABLED")
 	if enabled == "" {
-		clusterEnabled = beego.AppConfig.DefaultBool("DOCKER_CLUSTER_ENABLED", false)
+		envClusterEnabled = beego.AppConfig.DefaultBool("DOCKER_CLUSTER_ENABLED", false)
 	} else {
 		var err error
-		if clusterEnabled, err = strconv.ParseBool(enabled); err != nil {
-			clusterEnabled = false
+		if envClusterEnabled, err = strconv.ParseBool(enabled); err != nil {
+			envClusterEnabled = false
 		}
 	}
 
-	clusterURIs := os.Getenv("DOCKER_CLUSTER_URIS")
-	if clusterURIs == "" {
-		clusterURIs = beego.AppConfig.DefaultString("DOCKER_CLUSTER_URIS", "zk://127.0.0.1:2181")
+	envClusterURIs := os.Getenv("DOCKER_CLUSTER_URIS")
+	if envClusterURIs == "" {
+		envClusterURIs = beego.AppConfig.DefaultString("DOCKER_CLUSTER_URIS", "zk://127.0.0.1:2181")
 	}
 
-	clusterName := os.Getenv("DOCKER_CLUSTER_NAME")
-	if clusterName == "" {
-		clusterName = beego.AppConfig.DefaultString("DOCKER_CLUSTER_NAME", "humpback/center")
+	envClusterName := os.Getenv("DOCKER_CLUSTER_NAME")
+	if envClusterName == "" {
+		envClusterName = beego.AppConfig.DefaultString("DOCKER_CLUSTER_NAME", "humpback/center")
 	}
 
-	clusterHeartBeat := os.Getenv("DOCKER_CLUSTER_HEARTBEAT")
-	if clusterHeartBeat == "" {
-		clusterHeartBeat = beego.AppConfig.DefaultString("DOCKER_CLUSTER_HEARTBEAT", "10s")
+	envClusterHeartBeat := os.Getenv("DOCKER_CLUSTER_HEARTBEAT")
+	if envClusterHeartBeat == "" {
+		envClusterHeartBeat = beego.AppConfig.DefaultString("DOCKER_CLUSTER_HEARTBEAT", "10s")
 	}
 
-	clusterTTL := os.Getenv("DOCKER_CLUSTER_TTL")
-	if clusterTTL == "" {
-		clusterTTL = beego.AppConfig.DefaultString("DOCKER_CLUSTER_TTL", "35s")
+	envClusterTTL := os.Getenv("DOCKER_CLUSTER_TTL")
+	if envClusterTTL == "" {
+		envClusterTTL = beego.AppConfig.DefaultString("DOCKER_CLUSTER_TTL", "35s")
 	}
 
-	clusterPortsRange := os.Getenv("DOCKER_CLUSTER_PORTS_RANGE")
-	if clusterPortsRange == "" {
-		clusterPortsRange = beego.AppConfig.DefaultString("DOCKER_CLUSTER_PORTS_RANGE", "0-0")
+	envClusterPortsRange := os.Getenv("DOCKER_CLUSTER_PORTS_RANGE")
+	if envClusterPortsRange == "" {
+		envClusterPortsRange = beego.AppConfig.DefaultString("DOCKER_CLUSTER_PORTS_RANGE", "0-0")
 	}
 
 	var logLevel int
@@ -87,18 +104,20 @@ func Init() {
 	}
 
 	config = &models.Config{
-		DockerEndPoint:          endpoint,
-		DockerAPIVersion:        apiVersion,
-		DockerRegistryAddress:   dockerRegistryAdd,
-		EnableBuildImage:        enableBuildImg,
-		DockerAgentIPAddr:       dockerAgentIPAddr,
-		DockerClusterEnabled:    clusterEnabled,
-		DockerClusterURIs:       clusterURIs,
-		DockerClusterName:       clusterName,
-		DockerClusterHeartBeat:  clusterHeartBeat,
-		DockerClusterTTL:        clusterTTL,
-		DockerClusterPortsRange: clusterPortsRange,
-		LogLevel:                logLevel,
+		DockerEndPoint:              envEndpoint,
+		DockerAPIVersion:            envAPIVersion,
+		DockerRegistryAddress:       envRegistryAddr,
+		EnableBuildImage:            envEnableBuildImg,
+		DockerComposePath:           envComposePath,
+		DockerComposePackageMaxSize: envComposePackageMaxSize,
+		DockerAgentIPAddr:           envAgentIPAddr,
+		DockerClusterEnabled:        envClusterEnabled,
+		DockerClusterURIs:           envClusterURIs,
+		DockerClusterName:           envClusterName,
+		DockerClusterHeartBeat:      envClusterHeartBeat,
+		DockerClusterTTL:            envClusterTTL,
+		DockerClusterPortsRange:     envClusterPortsRange,
+		LogLevel:                    logLevel,
 	}
 }
 

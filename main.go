@@ -1,11 +1,12 @@
 package main
 
+import "github.com/astaxie/beego"
+import "github.com/astaxie/beego/plugins/cors"
+import "github.com/humpback/common/models"
 import "github.com/humpback/humpback-agent/config"
 import "github.com/humpback/humpback-agent/controllers"
 import "github.com/humpback/humpback-agent/routers"
 import "github.com/humpback/humpback-center/cluster"
-import "github.com/astaxie/beego"
-import "github.com/astaxie/beego/plugins/cors"
 
 import (
 	"os"
@@ -16,12 +17,18 @@ import (
 func main() {
 
 	config.Init()
+	config.SetVersion("1.3.2")
+
 	controllers.Init()
-	routers.Init()
-
-	config.SetVersion("1.3.0")
-
 	var conf = config.GetConfig()
+	beego.BConfig.MaxMemory = conf.DockerComposePackageMaxSize
+	composeStorage, err := models.NewComposeStorage(conf.DockerComposePath)
+	if err != nil {
+		beego.Error("compose storage error, " + err.Error())
+		return
+	}
+	routers.Init(composeStorage)
+
 	beego.InsertFilter("*", beego.BeforeRouter, cors.Allow(&cors.Options{
 		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},
