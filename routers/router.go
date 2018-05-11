@@ -9,6 +9,7 @@ import "github.com/humpback/humpback-agent/validators"
 func Init(composeStorage *models.ComposeStorage) {
 	faqRouter := beego.NSRouter("/ping", &controllers.FaqController{})
 	infoRouter := beego.NSRouter("/dockerinfo", &controllers.InfoController{})
+	versionRouter := beego.NSRouter("/dockerversion", &controllers.VersionController{})
 
 	imageRouters := beego.NSNamespace("/images",
 		beego.NSRouter("/", &controllers.ImageController{}, "get:GetImages;post:PullImage"),
@@ -33,6 +34,7 @@ func Init(composeStorage *models.ComposeStorage) {
 	ns := beego.NewNamespace("/dockerapi/v2",
 		faqRouter,
 		infoRouter,
+		versionRouter,
 		imageRouters,
 		containerRouters,
 		serviceRouters,
@@ -41,6 +43,7 @@ func Init(composeStorage *models.ComposeStorage) {
 	agentSpace := beego.NewNamespace("/v1",
 		faqRouter,
 		infoRouter,
+		versionRouter,
 		imageRouters,
 		containerRouters,
 		serviceRouters,
