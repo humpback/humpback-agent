@@ -17,7 +17,7 @@ import (
 func main() {
 
 	config.Init()
-	config.SetVersion("1.3.2")
+	config.SetVersion("1.3.3")
 
 	controllers.Init()
 	var conf = config.GetConfig()

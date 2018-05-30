@@ -9,15 +9,18 @@ import (
 )
 
 func CreateServiceValidator(ctx *context.Context) {
+
 	var errs []string
 	if ctx.Request.Method == "POST" {
 		var reqBody models.CreateProject
-
 		if err := json.Unmarshal(ctx.Input.RequestBody, &reqBody); err != nil {
 			errs = append(errs, "Invalid json data.")
 		}
 		if reqBody.Name == "" {
 			errs = append(errs, "Name cannot be empty or null.")
+		}
+		if reqBody.ComposeData == "" {
+			errs = append(errs, "Compose yaml body cannot be empty or null.")
 		}
 	}
 

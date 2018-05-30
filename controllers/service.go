@@ -1,21 +1,39 @@
 package controllers
 
 import "github.com/astaxie/beego"
+import "github.com/docker/docker/api/types"
+import "github.com/docker/docker/api/types/filters"
 import "github.com/docker/libcompose/docker"
 import "github.com/docker/libcompose/docker/ctx"
+import "github.com/docker/libcompose/labels"
 import "github.com/docker/libcompose/project"
 import "github.com/docker/libcompose/project/options"
 import "github.com/humpback/common/models"
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
+	"math"
 	"os"
 	"strings"
 )
 
+var initialFilterArgs = []filters.KeyValuePair{
+	filters.KeyValuePair{"label", labels.PROJECT.Str()},
+	filters.KeyValuePair{"label", labels.SERVICE.Str()},
+	filters.KeyValuePair{"label", labels.NUMBER.Str()},
+}
+
 // ServiceMaxTimeoutSecond - Service stop | restart max timeout
 const ServiceMaxTimeoutSecond = 300
+
+// ProjectPair - project service containers
+type ProjectPair struct {
+	Name       string
+	Containers project.InfoSet
+}
 
 // ServiceController - handle http request for compose service
 type ServiceController struct {
@@ -38,64 +56,136 @@ func createComposeAPIProject(projectName string, composeFile string) (project.AP
 	return composeAPIProject, nil
 }
 
+func containerName(names []string) string {
+
+	max := math.MaxInt32
+	var current string
+	for _, v := range names {
+		if len(v) < max {
+			max = len(v)
+			current = v
+		}
+	}
+	return current[1:]
+}
+
+func containerPortString(ports []types.Port) string {
+
+	result := []string{}
+	for _, port := range ports {
+		if port.PublicPort > 0 {
+			result = append(result, fmt.Sprintf("%s:%d->%d/%s", port.IP, port.PublicPort, port.PrivatePort, port.Type))
+		} else {
+			result = append(result, fmt.Sprintf("%d/%s", port.PrivatePort, port.Type))
+		}
+	}
+	return strings.Join(result, ", ")
+}
+
+func containerInfo(container types.Container) project.Info {
+
+	result := project.Info{}
+	result["Id"] = container.ID
+	result["Name"] = containerName(container.Names)
+	result["Command"] = container.Command
+	result["State"] = container.Status
+	result["Ports"] = containerPortString(container.Ports)
+	return result
+}
+
 func (controller *ServiceController) GetServices() {
 
-	projectDataArray, err := controller.ComposeStorage.ProjectSpecs()
+	filtersArgs := filters.NewArgs(initialFilterArgs...)
+	option := types.ContainerListOptions{
+		All:     true,
+		Filters: filtersArgs,
+	}
+
+	containers, err := dockerClient.ContainerList(context.Background(), option)
 	if err != nil {
 		controller.Error(500, err.Error())
 	}
 
-	projectConfigs := []*models.ProjectConfig{}
-	for _, projectData := range projectDataArray {
-		composeAPIProject, err := createComposeAPIProject(projectData.Name, projectData.ComposeFile)
-		if err != nil {
-			controller.Error(500, err.Error())
+	projectsKVPair := map[string]*ProjectPair{}
+	for _, container := range containers {
+		projectName := container.Labels[labels.PROJECT.Str()]
+		info := containerInfo(container)
+		if projectPair, _ := projectsKVPair[projectName]; projectPair == nil {
+			projectsKVPair[projectName] = &ProjectPair{
+				Name:       projectName,
+				Containers: project.InfoSet{info},
+			}
+		} else {
+			projectPair.Containers = append(projectPair.Containers, info)
 		}
-		infoSet, err := composeAPIProject.Ps(context.Background())
-		if err != nil {
-			controller.Error(500, err.Error())
-		}
-		projectConfigs = append(projectConfigs, &models.ProjectConfig{
-			Name:        projectData.Name,
-			HashCode:    projectData.HashCode,
-			ComposeData: string(projectData.ComposeBytes),
-			PackageFile: projectData.PackageFile,
-			Timestamp:   projectData.Timestamp,
-			Containers:  infoSet,
-		})
 	}
-	controller.JSON(projectConfigs)
+
+	projectsBase := []*models.ProjectBase{}
+	for _, projectPair := range projectsKVPair {
+		projectBase := &models.ProjectBase{
+			Name:       projectPair.Name,
+			Containers: projectPair.Containers,
+		}
+		projectJSON, err := controller.ComposeStorage.ProjectJSON(projectPair.Name)
+		if err != nil {
+			projectStr := fmt.Sprintf("%s-%s-%d", projectPair.Name, "", 0)
+			projectBase.HashCode = fmt.Sprintf("%x", sha256.Sum256([]byte(projectStr)))
+			projectBase.Timestamp = 0
+		} else {
+			projectBase.HashCode = projectJSON.HashCode
+			projectBase.Timestamp = projectJSON.Timestamp
+		}
+		projectsBase = append(projectsBase, projectBase)
+	}
+	controller.JSON(projectsBase)
 }
 
 func (controller *ServiceController) GetService() {
 
 	projectName := controller.Ctx.Input.Param(":service")
+	filtersArgs := filters.NewArgs(initialFilterArgs...)
+	filtersArgs.Add("label", labels.PROJECT.Str()+"="+projectName)
+	option := types.ContainerListOptions{
+		All:     true,
+		Filters: filtersArgs,
+	}
+
+	containers, err := dockerClient.ContainerList(context.Background(), option)
+	if err != nil {
+		controller.Error(500, err.Error())
+	}
+
+	if len(containers) == 0 {
+		_, err := controller.ComposeStorage.ProjectJSON(projectName)
+		if err == os.ErrNotExist {
+			controller.Error(404, "service not found")
+		}
+	}
+
+	projectInfo := &models.ProjectInfo{
+		ProjectBase: models.ProjectBase{
+			Name:       projectName,
+			Containers: project.InfoSet{},
+		},
+	}
+
+	for _, container := range containers {
+		info := containerInfo(container)
+		projectInfo.Containers = append(projectInfo.Containers, info)
+	}
+
 	projectData, err := controller.ComposeStorage.ProjectSpec(projectName)
 	if err != nil {
-		if err == os.ErrNotExist {
-			controller.Error(404, err.Error())
-		}
-		controller.Error(500, err.Error())
+		projectStr := fmt.Sprintf("%s-%s-%d", projectName, "", 0)
+		projectInfo.HashCode = fmt.Sprintf("%x", sha256.Sum256([]byte(projectStr)))
+		projectInfo.Timestamp = 0
+	} else {
+		projectInfo.HashCode = projectData.HashCode
+		projectInfo.Timestamp = projectData.Timestamp
+		projectInfo.ComposeData = string(projectData.ComposeBytes)
+		projectInfo.PackageFile = projectData.PackageFile
 	}
-
-	composeAPIProject, err := createComposeAPIProject(projectData.Name, projectData.ComposeFile)
-	if err != nil {
-		controller.Error(500, err.Error())
-	}
-
-	infoSet, err := composeAPIProject.Ps(context.Background())
-	if err != nil {
-		controller.Error(500, err.Error())
-	}
-
-	controller.JSON(&models.ProjectConfig{
-		Name:        projectData.Name,
-		HashCode:    projectData.HashCode,
-		ComposeData: string(projectData.ComposeBytes),
-		PackageFile: projectData.PackageFile,
-		Timestamp:   projectData.Timestamp,
-		Containers:  infoSet,
-	})
+	controller.JSON(projectInfo)
 }
 
 func (controller *ServiceController) CreateService() {
@@ -105,13 +195,17 @@ func (controller *ServiceController) CreateService() {
 	projectData, err := controller.ComposeStorage.CreateProjectSpec(reqBody)
 	if err != nil {
 		if err == os.ErrExist {
-			controller.Error(409, err.Error())
+			controller.Error(409, "service already exists")
 		}
 		controller.Error(500, err.Error())
 	}
 
 	composeAPIProject, err := createComposeAPIProject(projectData.Name, projectData.ComposeFile)
 	if err != nil {
+		controller.ComposeStorage.RemoveProjectSpec(projectData.Name)
+		if strings.Index(err.Error(), "yaml: unmarshal errors") >= 0 {
+			err = fmt.Errorf("compose data format invalid, %s", err)
+		}
 		controller.Error(500, err.Error())
 	}
 
@@ -131,7 +225,7 @@ func (controller *ServiceController) DeleteService() {
 	projectData, err := controller.ComposeStorage.ProjectSpec(projectName)
 	if err != nil {
 		if err == os.ErrNotExist {
-			controller.Error(404, err.Error())
+			controller.Error(404, "service not found")
 		}
 		controller.Error(500, err.Error())
 	}
@@ -159,7 +253,7 @@ func (controller *ServiceController) OperateService() {
 	projectData, err := controller.ComposeStorage.ProjectSpec(reqBody.Name)
 	if err != nil {
 		if err == os.ErrNotExist {
-			controller.Error(404, err.Error())
+			controller.Error(404, "service not found")
 		}
 		controller.Error(500, err.Error())
 	}
@@ -190,12 +284,11 @@ func (controller *ServiceController) OperateService() {
 	beego.Info("compose project " + projectData.Name + " " + reqBody.Action)
 	switch reqBody.Action {
 	case "restart":
-		beego.Info("restart...")
+		beego.Info("restart " + projectData.Name)
 		if err = composeAPIProject.Restart(context.Background(), ServiceMaxTimeoutSecond); err != nil {
 			controller.Error(500, err.Error())
 		}
 	case "start":
-		//start, 只处理状态为：Exited | Dead | Created 的容器
 		services := []string{}
 		for _, serviceState := range servicesState {
 			if serviceState.Name != "" && serviceState.ContainerState != nil {
@@ -213,7 +306,6 @@ func (controller *ServiceController) OperateService() {
 			}
 		}
 	case "stop":
-		//stop, 只处理状态为：Running | Restarting | Paused 的容器
 		services := []string{}
 		for _, serviceState := range servicesState {
 			if serviceState.Name != "" && serviceState.ContainerState != nil {
@@ -230,7 +322,6 @@ func (controller *ServiceController) OperateService() {
 			}
 		}
 	case "pause":
-		//pause, 只处理状态为：Running的容器
 		services := []string{}
 		for _, serviceState := range servicesState {
 			if serviceState.Name != "" && serviceState.ContainerState != nil {
@@ -247,7 +338,6 @@ func (controller *ServiceController) OperateService() {
 			}
 		}
 	case "unpause":
-		//unpause, 只处理状态为：Paused的容器
 		services := []string{}
 		for _, serviceState := range servicesState {
 			if serviceState.Name != "" && serviceState.ContainerState != nil {
@@ -264,7 +354,6 @@ func (controller *ServiceController) OperateService() {
 			}
 		}
 	case "kill":
-		//kill, 只处理状态为：Running | Paused 的容器
 		services := []string{}
 		for _, serviceState := range servicesState {
 			if serviceState.Name != "" && serviceState.ContainerState != nil {
