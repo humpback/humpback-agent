@@ -240,6 +240,7 @@ func (ctCtrl *ContainerController) CreateContainer() {
 		Tty:          true,
 		Env:          reqBody.Env,
 		Image:        reqBody.Image,
+		Labels:       reqBody.Labels,
 	}
 
 	if reqBody.Command != "" {
