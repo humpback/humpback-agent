@@ -29,7 +29,7 @@ type containerError struct {
 }
 
 var containerID string
-var clientTimeout = 15 * time.Second
+var clientTimeout = 30 * time.Second
 
 // Prepare - format path before exec real action
 func (ctCtrl *ContainerController) Prepare() {
@@ -52,8 +52,6 @@ func (ctCtrl *ContainerController) GetContainer() {
 		ctCtrl.JSON(originalContainer)
 	} else {
 		container.Parse(&originalContainer)
-		container.Labels = originalContainer.Config.Labels
-		container.LogConfig = originalContainer.HostConfig.LogConfig
 		ctCtrl.JSON(container)
 	}
 }
@@ -225,9 +223,31 @@ func (ctCtrl *ContainerController) CreateContainer() {
 	var reqBody models.Container
 	json.Unmarshal(ctCtrl.Ctx.Input.RequestBody, &reqBody)
 
+	procUpdate := struct {
+		AllowUpdate       bool
+		OriginalName      string
+		OriginalContainer types.ContainerJSON
+	}{
+		AllowUpdate: false,
+	}
+
+	if strings.TrimSpace(reqBody.ID) != "" { //UpdateContainer Req
+		originalContainer, err := dockerClient.ContainerInspect(context.Background(), reqBody.ID)
+		if err != nil {
+			if strings.Index(err.Error(), "No such container") != -1 {
+				ctCtrl.Error(404, err.Error())
+			} else {
+				ctCtrl.Error(500, err.Error())
+			}
+		} else {
+			procUpdate.AllowUpdate = true
+			procUpdate.OriginalName = strings.Replace(originalContainer.Name, "/", "", 1)
+			procUpdate.OriginalContainer = originalContainer
+		}
+	}
+
 	// determine whether there is a image
-	err := tryPullImage(reqBody.Image)
-	if err != nil {
+	if err := tryPullImage(reqBody.Image); err != nil {
 		ctCtrl.Error(500, err.Error(), 21001)
 	}
 
@@ -312,23 +332,51 @@ func (ctCtrl *ContainerController) CreateContainer() {
 		hostconfig.Binds = append(hostconfig.Binds, tempBind)
 	}
 
-	res, err := dockerClient.ContainerCreate(context.Background(), &config, &hostconfig, &network.NetworkingConfig{}, reqBody.Name)
-	if err != nil {
+	if procUpdate.AllowUpdate {
+		tempName := procUpdate.OriginalName + strconv.FormatInt(time.Now().Unix(), 10)
+		beego.Debug("UPDATE - Begin to reanme container from " + procUpdate.OriginalName + " to " + tempName)
+		err := dockerClient.ContainerRename(context.Background(), procUpdate.OriginalContainer.ID, tempName)
 		if err != nil {
-			if err.Error() == "container already exists" {
-				ctCtrl.Error(409, err.Error())
-			} else {
-				ctCtrl.Error(500, err.Error())
+			ctCtrl.Error(500, err.Error(), 20003)
+		}
+		if procUpdate.OriginalContainer.State.Running || procUpdate.OriginalContainer.State.Restarting {
+			beego.Debug("UPDATE - Begin to stop container info for " + procUpdate.OriginalContainer.ID)
+			if err := stopContainer(procUpdate.OriginalContainer.ID); err != nil {
+				dockerClient.ContainerRename(context.Background(), procUpdate.OriginalContainer.ID, procUpdate.OriginalName)
+				ctCtrl.Error(500, err.Error(), 20005)
 			}
 		}
 	}
 
-	err = dockerClient.ContainerStart(context.Background(), res.ID, types.ContainerStartOptions{})
+	networkConfig := network.NetworkingConfig{}
+	res, err := dockerClient.ContainerCreate(context.Background(), &config, &hostconfig, &networkConfig, reqBody.Name)
 	if err != nil {
-		dockerClient.ContainerRemove(context.Background(), res.ID, types.ContainerRemoveOptions{
+		if procUpdate.AllowUpdate {
+			dockerClient.ContainerRename(context.Background(), procUpdate.OriginalContainer.ID, procUpdate.OriginalName)
+		}
+		if err.Error() == "container already exists" {
+			ctCtrl.Error(409, err.Error())
+		} else {
+			ctCtrl.Error(500, err.Error())
+		}
+	}
+
+	if procUpdate.AllowUpdate {
+		beego.Debug("UPDATE - Begin to delete old container " + procUpdate.OriginalContainer.ID)
+		dockerClient.ContainerRemove(context.Background(), procUpdate.OriginalContainer.ID, types.ContainerRemoveOptions{
 			RemoveVolumes: true,
 			Force:         true,
 		})
+	}
+
+	err = dockerClient.ContainerStart(context.Background(), res.ID, types.ContainerStartOptions{})
+	if err != nil {
+		if !procUpdate.AllowUpdate {
+			dockerClient.ContainerRemove(context.Background(), res.ID, types.ContainerRemoveOptions{
+				RemoveVolumes: true,
+				Force:         true,
+			})
+		}
 		ctCtrl.Error(500, err.Error(), 20001)
 	}
 	result := map[string]interface{}{
@@ -445,7 +493,7 @@ func upgradeContainer(id, newTag string) (string, int, error) {
 		return "", 20003, err
 	}
 
-	if container.State.Running {
+	if container.State.Running || container.State.Restarting {
 		beego.Debug("UPGRADE - Begin to stop container info for " + id)
 		if err := stopContainer(id); err != nil {
 			return "", 20005, err
@@ -493,7 +541,7 @@ func stopContainer(id string) error {
 	var err error
 	go func(container string, ch chan<- containerError) {
 		stopError := containerError{Error: nil}
-		duration := time.Second * 10
+		duration := time.Second * 20
 		stopError.Error = dockerClient.ContainerStop(context.Background(), container, &duration)
 		ch <- stopError
 	}(id, stopCh)

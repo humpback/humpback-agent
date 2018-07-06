@@ -6,13 +6,13 @@ Container already created, but cannot start
 Get container info failed when upgrade container
 
 > `20003`     
-Rename container failed when upgrade container
+Rename container failed when upgrade or update container
 
 > `20004`     
 Try pull image failed when upgrade container
 
 > `20005`     
-Stop container failed when upgrade container
+Stop container failed when upgrade or update container
 
 > `20006`     
 Cannot create new container when upgrade container
@@ -24,4 +24,4 @@ Cannot start new container when upgrade container
 Cannot delete old container when upgrade container, but image is upgrade succeed
 
 > `21001`
-Try pull image failed when create container.
+Try pull image failed when create or update container.

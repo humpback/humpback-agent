@@ -13,3 +13,11 @@ version 1.1.1
 version 1.3.0
 ---
 - Add container `--log-opt` property.
+
+version 1.3.3
+---
+- Supported docker compose containers.
+
+version 1.3.4
+---
+- Supported edit single mode and cluster mode containers.
