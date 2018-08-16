@@ -6,7 +6,7 @@ import "github.com/humpback/common/models"
 import "github.com/humpback/humpback-agent/config"
 import "github.com/humpback/humpback-agent/controllers"
 import "github.com/humpback/humpback-agent/routers"
-import "github.com/humpback/humpback-center/cluster"
+import "github.com/humpback/humpback-center/cluster/types"
 
 import (
 	"os"
@@ -17,7 +17,7 @@ import (
 func main() {
 
 	config.Init()
-	config.SetVersion("1.3.4")
+	config.SetVersion("1.3.5")
 
 	controllers.Init()
 	var conf = config.GetConfig()
@@ -39,10 +39,8 @@ func main() {
 	beego.SetLevel(conf.LogLevel)
 
 	if conf.DockerClusterEnabled {
-		clusterOptions := cluster.NewNodeRegisterOptions(beego.BConfig.Listen.HTTPPort,
-			conf.DockerClusterName, conf.DockerClusterURIs, conf.DockerClusterHeartBeat,
-			conf.DockerClusterTTL, conf.DockerAgentIPAddr, conf.DockerEndPoint, conf.DockerAPIVersion)
-		if err := cluster.NodeRegister(clusterOptions); err != nil {
+		clusterOptions := types.NewNodeRegisterOptions(beego.BConfig.Listen.HTTPPort, &conf)
+		if err := types.NodeRegister(clusterOptions); err != nil {
 			beego.Error("cluster node register error:" + err.Error())
 			return
 		}
@@ -57,7 +55,7 @@ func signalListen() {
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 	for {
 		<-c
-		cluster.NodeClose()
+		types.NodeClose()
 		os.Exit(0)
 	}
 }
