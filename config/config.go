@@ -1,11 +1,15 @@
 package config
 
-import "github.com/humpback/common/models"
 import "github.com/astaxie/beego"
+import "github.com/humpback/common/models"
+import "github.com/humpback/gounits/network"
 
 import (
+	"fmt"
+	"net"
 	"os"
 	"strconv"
+	"strings"
 )
 
 var config *models.Config
@@ -27,10 +31,14 @@ func Init() {
 		envRegistryAddr = beego.AppConfig.DefaultString("DOCKER_REGISTRY_ADDRESS", "docker.neg")
 	}
 
-	//若没有设置环境变量, 默认(0.0.0.0)时，则在节点注册时自动获取一个本机地址.
-	envAgentIPAddr := os.Getenv("DOCKER_AGENT_IPADDR")
-	if envAgentIPAddr == "" {
-		envAgentIPAddr = beego.AppConfig.DefaultString("DOCKER_AGENT_IPADDR", "0.0.0.0")
+	envNodeHTTPAddr := os.Getenv("DOCKER_NODE_HTTPADDR")
+	if envNodeHTTPAddr == "" {
+		envNodeHTTPAddr = beego.AppConfig.DefaultString("DOCKER_NODE_HTTPADDR", "0.0.0.0:8500")
+	}
+
+	envContainerPortsRange := os.Getenv("DOCKER_CONTAINER_PORTS_RANGE")
+	if envContainerPortsRange == "" {
+		envContainerPortsRange = beego.AppConfig.DefaultString("DOCKER_CONTAINER_PORTS_RANGE", "0-0")
 	}
 
 	var envEnableBuildImg bool
@@ -91,11 +99,6 @@ func Init() {
 		envClusterTTL = beego.AppConfig.DefaultString("DOCKER_CLUSTER_TTL", "35s")
 	}
 
-	envClusterPortsRange := os.Getenv("DOCKER_CLUSTER_PORTS_RANGE")
-	if envClusterPortsRange == "" {
-		envClusterPortsRange = beego.AppConfig.DefaultString("DOCKER_CLUSTER_PORTS_RANGE", "0-0")
-	}
-
 	var logLevel int
 	if envLogLevel := os.Getenv("LOG_LEVEL"); envLogLevel != "" {
 		logLevel, _ = strconv.Atoi(envLogLevel)
@@ -110,13 +113,13 @@ func Init() {
 		EnableBuildImage:            envEnableBuildImg,
 		DockerComposePath:           envComposePath,
 		DockerComposePackageMaxSize: envComposePackageMaxSize,
-		DockerAgentIPAddr:           envAgentIPAddr,
+		DockerNodeHTTPAddr:          envNodeHTTPAddr,
+		DockerContainerPortsRange:   envContainerPortsRange,
 		DockerClusterEnabled:        envClusterEnabled,
 		DockerClusterURIs:           envClusterURIs,
 		DockerClusterName:           envClusterName,
 		DockerClusterHeartBeat:      envClusterHeartBeat,
 		DockerClusterTTL:            envClusterTTL,
-		DockerClusterPortsRange:     envClusterPortsRange,
 		LogLevel:                    logLevel,
 	}
 }
@@ -126,7 +129,41 @@ func GetConfig() models.Config {
 	return *config
 }
 
-// SetAppVersion - ser app version
+// SetVersion - set app version
 func SetVersion(version string) {
 	config.AppVersion = version
+}
+
+// GetNodeHTTPAddrIPPort - return local agent httpaddr info
+func GetNodeHTTPAddrIPPort() (string, int, error) {
+
+	httpAddr := strings.TrimSpace(config.DockerNodeHTTPAddr)
+	if strings.Index(httpAddr, ":") < 0 {
+		httpAddr = httpAddr + ":"
+	}
+
+	pAddrStr := strings.SplitN(httpAddr, ":", 2)
+	if pAddrStr[1] == "" {
+		httpAddr = httpAddr + "8500"
+	}
+
+	strHost, strPort, err := net.SplitHostPort(httpAddr)
+	if err != nil {
+		return "", 0, err
+	}
+
+	if strHost == "" || strHost == "0.0.0.0" {
+		strHost = network.GetDefaultIP()
+	}
+
+	ip := net.ParseIP(strHost)
+	if ip == nil {
+		return "", 0, fmt.Errorf("httpAddr ip invalid")
+	}
+
+	port, err := strconv.Atoi(strPort)
+	if err != nil || port > 65535 || port <= 0 {
+		return "", 0, fmt.Errorf("httpAddr port invalid")
+	}
+	return ip.String(), port, nil
 }

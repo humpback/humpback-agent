@@ -17,7 +17,7 @@ import (
 func main() {
 
 	config.Init()
-	config.SetVersion("1.3.5")
+	config.SetVersion("1.3.7")
 
 	controllers.Init()
 	var conf = config.GetConfig()
@@ -38,15 +38,21 @@ func main() {
 	beego.SetLogFuncCall(true)
 	beego.SetLevel(conf.LogLevel)
 
+	ipAddr, bindPort, err := config.GetNodeHTTPAddrIPPort()
+	if err != nil {
+		beego.Error("agent httpaddr error:" + err.Error())
+	}
+
+	beego.BConfig.Listen.HTTPPort = bindPort
 	if conf.DockerClusterEnabled {
-		clusterOptions := types.NewNodeRegisterOptions(beego.BConfig.Listen.HTTPPort, &conf)
+		clusterOptions := types.NewNodeRegisterOptions(ipAddr, bindPort, &conf)
 		if err := types.NodeRegister(clusterOptions); err != nil {
 			beego.Error("cluster node register error:" + err.Error())
 			return
 		}
 	}
-	go signalListen()
 
+	go signalListen()
 	beego.Run()
 }
 

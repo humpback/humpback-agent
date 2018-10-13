@@ -28,17 +28,16 @@ type containerError struct {
 	Error error
 }
 
-var containerID string
 var clientTimeout = 30 * time.Second
 
 // Prepare - format path before exec real action
 func (ctCtrl *ContainerController) Prepare() {
-	containerID = ctCtrl.Ctx.Input.Param(":containerid")
 }
 
 // GetContainer - get container info with name or id
 func (ctCtrl *ContainerController) GetContainer() {
 	var container models.Container
+	containerID := ctCtrl.Ctx.Input.Param(":containerid")
 	originalContainer, err := dockerClient.ContainerInspect(context.Background(), containerID)
 	if err != nil {
 		if strings.Index(err.Error(), "No such container") != -1 {
@@ -72,7 +71,6 @@ func (ctCtrl *ContainerController) GetContainers() {
 // GetContainerLogs - get container
 func (ctCtrl *ContainerController) GetContainerLogs() {
 	tail := ctCtrl.GetString("tail")
-
 	since := ctCtrl.Ctx.Input.Query("since")
 	if since != "" {
 		tempTime, err := time.Parse("2006-01-02", since)
@@ -91,6 +89,8 @@ func (ctCtrl *ContainerController) GetContainerLogs() {
 	if tail != "" {
 		option.Tail = tail
 	}
+
+	containerID := ctCtrl.Ctx.Input.Param(":containerid")
 	res, err := dockerClient.ContainerLogs(context.Background(), containerID, option)
 	if err != nil {
 		ctCtrl.Error(500, err.Error())
@@ -183,6 +183,7 @@ func getContainerStats(name string, id string, ch chan models.ContainerStatsWith
 
 // GetContainerStats - get container's stats, include (cpu/memory/network...)
 func (ctCtrl *ContainerController) GetContainerStats() {
+	containerID := ctCtrl.Ctx.Input.Param(":containerid")
 	container, err := dockerClient.ContainerInspect(context.Background(), containerID)
 	if err != nil {
 		if strings.Index(err.Error(), "No such container") != -1 {
@@ -207,6 +208,7 @@ func (ctCtrl *ContainerController) GetContainerStats() {
 
 // GetContainerStatus - get container's status (running, paused, restarting, killed, dead, pid, exitcode...)
 func (ctCtrl *ContainerController) GetContainerStatus() {
+	containerID := ctCtrl.Ctx.Input.Param(":containerid")
 	container, err := dockerClient.ContainerInspect(context.Background(), containerID)
 	if err != nil {
 		if strings.Index(err.Error(), "No such container") != -1 {
@@ -247,7 +249,8 @@ func (ctCtrl *ContainerController) CreateContainer() {
 	}
 
 	// determine whether there is a image
-	if err := tryPullImage(reqBody.Image); err != nil {
+	inspectImage, err := tryPullImage(reqBody.Image)
+	if err != nil {
 		ctCtrl.Error(500, err.Error(), 21001)
 	}
 
@@ -298,27 +301,47 @@ func (ctCtrl *ContainerController) CreateContainer() {
 	//port binding
 	config.ExposedPorts = make(nat.PortSet)
 	portBinding := make(nat.PortMap)
-	for _, item := range reqBody.Ports {
-		privatePort := nat.Port(strconv.Itoa(item.PrivatePort) + "/" + item.Type)
-		config.ExposedPorts[privatePort] = *new(struct{})
-		if item.PublicPort != 0 {
-			tempPublicPort := []nat.PortBinding{
-				nat.PortBinding{
-					HostIP:   item.IP,
-					HostPort: strconv.Itoa(item.PublicPort),
-				},
-			}
-			portBinding[privatePort] = tempPublicPort
-		} else {
-			hostPort := ctCtrl.makeSystemIdlePort(item.Type)
-			if hostPort > 0 {
-				tempPublicPort := []nat.PortBinding{
-					nat.PortBinding{
-						HostIP:   item.IP,
-						HostPort: strconv.Itoa((int)(hostPort)),
-					},
+	if hostconfig.NetworkMode.IsBridge() {
+		if len(reqBody.Ports) > 0 {
+			hostconfig.PublishAllPorts = false //disable -P ports alloc.
+			for _, item := range reqBody.Ports {
+				privatePort := nat.Port(strconv.Itoa(item.PrivatePort) + "/" + item.Type)
+				config.ExposedPorts[privatePort] = *new(struct{})
+				if item.PublicPort != 0 {
+					tempPublicPort := []nat.PortBinding{
+						nat.PortBinding{
+							HostIP:   item.IP,
+							HostPort: strconv.Itoa(item.PublicPort),
+						},
+					}
+					portBinding[privatePort] = tempPublicPort
+				} else {
+					hostPort := ctCtrl.makeSystemIdlePort(item.Type)
+					if hostPort > 0 {
+						tempPublicPort := []nat.PortBinding{
+							nat.PortBinding{
+								HostIP:   item.IP,
+								HostPort: strconv.Itoa((int)(hostPort)),
+							},
+						}
+						portBinding[privatePort] = tempPublicPort
+					}
 				}
-				portBinding[privatePort] = tempPublicPort
+			}
+		} else {
+			for item := range inspectImage.Config.ExposedPorts {
+				privatePort := item
+				config.ExposedPorts[privatePort] = *new(struct{})
+				hostPort := ctCtrl.makeSystemIdlePort(item.Proto())
+				if hostPort > 0 {
+					tempPublicPort := []nat.PortBinding{
+						nat.PortBinding{
+							HostIP:   "0.0.0.0",
+							HostPort: strconv.Itoa((int)(hostPort)),
+						},
+					}
+					portBinding[privatePort] = tempPublicPort
+				}
 			}
 		}
 	}
@@ -437,6 +460,7 @@ func (ctCtrl *ContainerController) OperateContainer() {
 // DeleteContainer - delete container
 func (ctCtrl *ContainerController) DeleteContainer() {
 
+	containerID := ctCtrl.Ctx.Input.Param(":containerid")
 	ctx, cancel := context.WithTimeout(context.Background(), clientTimeout)
 	removeCh := make(chan containerError, 1)
 	var err error
@@ -481,8 +505,7 @@ func upgradeContainer(id, newTag string) (string, int, error) {
 	newImage := strings.Split(container.Config.Image, ":")[0] + ":" + newTag
 
 	beego.Debug("UPGRADE - Begin try to pull image " + newImage)
-	err = tryPullImage(newImage)
-	fmt.Println(err)
+	_, err = tryPullImage(newImage)
 	if err != nil {
 		return "", 20004, err
 	}
@@ -565,11 +588,7 @@ func (ctCtrl *ContainerController) makeSystemIdlePort(kind string) int {
 	)
 
 	conf := config.GetConfig()
-	if !conf.DockerClusterEnabled {
-		return 0
-	}
-
-	rangePorts := strings.SplitN(conf.DockerClusterPortsRange, "-", 2)
+	rangePorts := strings.SplitN(conf.DockerContainerPortsRange, "-", 2)
 	if len(rangePorts) != 2 {
 		return 0
 	}

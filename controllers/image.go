@@ -55,7 +55,7 @@ func (imgCtrl *ImageController) PullImage() {
 	if reqBody.Image == "" {
 		imgCtrl.Error(400, "Image name cannot be empty or null.")
 	}
-	err := tryPullImage(reqBody.Image)
+	_, err := tryPullImage(reqBody.Image)
 	if err != nil {
 		imgCtrl.Error(500, err.Error())
 	}
@@ -86,8 +86,14 @@ func (imgCtrl *ImageController) DeleteImage() {
 }
 
 // tryPullImage - if image is exists then return or pull it from registry
-func tryPullImage(imageID string) error {
-	_, _, inspectErr := dockerClient.ImageInspectWithRaw(context.Background(), imageID)
+func tryPullImage(imageID string) (types.ImageInspect, error) {
+
+	var (
+		inspectInfo types.ImageInspect
+		inspectErr  error
+	)
+
+	inspectInfo, _, inspectErr = dockerClient.ImageInspectWithRaw(context.Background(), imageID)
 	if client.IsErrNotFound(inspectErr) {
 		inspectErr = nil
 		res, pullErr := dockerClient.ImagePull(context.Background(), imageID, types.ImagePullOptions{})
@@ -97,7 +103,7 @@ func tryPullImage(imageID string) error {
 		}
 
 		if pullErr != nil {
-			return pullErr
+			return inspectInfo, pullErr
 		}
 
 		dec := json.NewDecoder(res)
@@ -111,8 +117,9 @@ func tryPullImage(imageID string) error {
 		}
 		// if the final stream object contained an error, return it
 		if errMsg, ok := m["error"]; ok {
-			return fmt.Errorf("%v", errMsg)
+			return inspectInfo, fmt.Errorf("%v", errMsg)
 		}
+		inspectInfo, _, inspectErr = dockerClient.ImageInspectWithRaw(context.Background(), imageID)
 	}
-	return inspectErr
+	return inspectInfo, inspectErr
 }
