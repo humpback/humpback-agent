@@ -5,3 +5,7 @@ Humpback Agent 主要为 [Humpback](https://github.com/humpback/humpback) 平台
 ## License
 
 Apache-2.0
+
+## Changelog
+
+[CHANGELOG.md](CHANGELOG.md)
