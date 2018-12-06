@@ -14,32 +14,26 @@ import (
 
 var config *models.Config
 
-// Init - Load config info
+/**
+ Get config from env, if empty, get it from app config.
+ */
+func getConfigFromEnvOrAppConfig(key string, defaulValue string) string {
+	tmpValue := os.Getenv(key)
+	if tmpValue == "" {
+		tmpValue = beego.AppConfig.DefaultString(key, defaulValue)
+	}
+	return tmpValue
+}
+
+/**
+ Init - Load config info
+*/
 func Init() {
-	envEndpoint := os.Getenv("DOCKER_ENDPOINT")
-	if envEndpoint == "" {
-		envEndpoint = beego.AppConfig.DefaultString("DOCKER_ENDPOINT", "unix:///var/run/docker.sock")
-	}
-
-	envAPIVersion := os.Getenv("DOCKER_API_VERSION")
-	if envAPIVersion == "" {
-		envAPIVersion = beego.AppConfig.DefaultString("DOCKER_API_VERSION", "v1.20")
-	}
-
-	envRegistryAddr := os.Getenv("DOCKER_REGISTRY_ADDRESS")
-	if envRegistryAddr == "" {
-		envRegistryAddr = beego.AppConfig.DefaultString("DOCKER_REGISTRY_ADDRESS", "docker.neg")
-	}
-
-	envNodeHTTPAddr := os.Getenv("DOCKER_NODE_HTTPADDR")
-	if envNodeHTTPAddr == "" {
-		envNodeHTTPAddr = beego.AppConfig.DefaultString("DOCKER_NODE_HTTPADDR", "0.0.0.0:8500")
-	}
-
-	envContainerPortsRange := os.Getenv("DOCKER_CONTAINER_PORTS_RANGE")
-	if envContainerPortsRange == "" {
-		envContainerPortsRange = beego.AppConfig.DefaultString("DOCKER_CONTAINER_PORTS_RANGE", "0-0")
-	}
+	envEndpoint := getConfigFromEnvOrAppConfig("DOCKER_ENDPOINT", "unix:///var/run/docker.sock")
+	envAPIVersion := getConfigFromEnvOrAppConfig("DOCKER_API_VERSION", "v1.20")
+	envRegistryAddr := getConfigFromEnvOrAppConfig("DOCKER_REGISTRY_ADDRESS", "docker.neg")
+	envNodeHTTPAddr := getConfigFromEnvOrAppConfig("DOCKER_NODE_HTTPADDR", "0.0.0.0:8500")
+	envContainerPortsRange := getConfigFromEnvOrAppConfig("DOCKER_CONTAINER_PORTS_RANGE", "0-0")
 
 	var envEnableBuildImg bool
 	if tempEnableBuildImg := os.Getenv("ENABLE_BUILD_IMAGE"); tempEnableBuildImg != "" {
