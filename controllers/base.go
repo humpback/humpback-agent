@@ -1,7 +1,7 @@
 package controllers
 
 import "github.com/humpback/common/models"
-import "github.com/humpback/humpback-agent/config"
+import "humpback-agent/config"
 import "github.com/astaxie/beego"
 import "github.com/docker/docker/client"
 

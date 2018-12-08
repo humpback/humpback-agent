@@ -2,8 +2,8 @@ package routers
 
 import "github.com/astaxie/beego"
 import "github.com/humpback/common/models"
-import "github.com/humpback/humpback-agent/controllers"
-import "github.com/humpback/humpback-agent/validators"
+import "humpback-agent/controllers"
+import "humpback-agent/validators"
 
 // Init - Init routers
 func Init(composeStorage *models.ComposeStorage) {

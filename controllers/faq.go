@@ -1,6 +1,6 @@
 package controllers
 
-import "github.com/humpback/humpback-agent/config"
+import "humpback-agent/config"
 
 // FaqController - faq info
 type FaqController struct {
