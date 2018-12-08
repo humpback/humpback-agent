@@ -34,6 +34,7 @@ func Init() {
 	envRegistryAddr := getConfigFromEnvOrAppConfig("DOCKER_REGISTRY_ADDRESS", "docker.neg")
 	envNodeHTTPAddr := getConfigFromEnvOrAppConfig("DOCKER_NODE_HTTPADDR", "0.0.0.0:8500")
 	envContainerPortsRange := getConfigFromEnvOrAppConfig("DOCKER_CONTAINER_PORTS_RANGE", "0-0")
+	envComposePath := getConfigFromEnvOrAppConfig("DOCKER_COMPOSE_PATH", "./compose_files")
 
 	var envEnableBuildImg bool
 	if tempEnableBuildImg := os.Getenv("ENABLE_BUILD_IMAGE"); tempEnableBuildImg != "" {
@@ -43,11 +44,7 @@ func Init() {
 	} else {
 		envEnableBuildImg = beego.AppConfig.DefaultBool("ENABLE_BUILD_IMAGE", false)
 	}
-
-	envComposePath := os.Getenv("DOCKER_COMPOSE_PATH")
-	if envComposePath == "" {
-		envComposePath = beego.AppConfig.DefaultString("DOCKER_COMPOSE_PATH", "./compose_files")
-	}
+	
 
 	var envComposePackageMaxSize int64
 	packageMaxSize := os.Getenv("DOCKER_COMPOSE_PACKAGE_MAXSIZE")
@@ -73,25 +70,11 @@ func Init() {
 		}
 	}
 
-	envClusterURIs := os.Getenv("DOCKER_CLUSTER_URIS")
-	if envClusterURIs == "" {
-		envClusterURIs = beego.AppConfig.DefaultString("DOCKER_CLUSTER_URIS", "zk://127.0.0.1:2181")
-	}
-
-	envClusterName := os.Getenv("DOCKER_CLUSTER_NAME")
-	if envClusterName == "" {
-		envClusterName = beego.AppConfig.DefaultString("DOCKER_CLUSTER_NAME", "humpback/center")
-	}
-
-	envClusterHeartBeat := os.Getenv("DOCKER_CLUSTER_HEARTBEAT")
-	if envClusterHeartBeat == "" {
-		envClusterHeartBeat = beego.AppConfig.DefaultString("DOCKER_CLUSTER_HEARTBEAT", "10s")
-	}
-
-	envClusterTTL := os.Getenv("DOCKER_CLUSTER_TTL")
-	if envClusterTTL == "" {
-		envClusterTTL = beego.AppConfig.DefaultString("DOCKER_CLUSTER_TTL", "35s")
-	}
+	// Cluster config
+	envClusterURIs := getConfigFromEnvOrAppConfig("DOCKER_CLUSTER_URIS", "zk://127.0.0.1:2181")
+	envClusterName := getConfigFromEnvOrAppConfig("DOCKER_CLUSTER_NAME", "humpback/center")
+	envClusterHeartBeat := getConfigFromEnvOrAppConfig("DOCKER_CLUSTER_HEARTBEAT", "10s")
+	envClusterTTL := getConfigFromEnvOrAppConfig("DOCKER_CLUSTER_TTL", "35s")
 
 	var logLevel int
 	if envLogLevel := os.Getenv("LOG_LEVEL"); envLogLevel != "" {

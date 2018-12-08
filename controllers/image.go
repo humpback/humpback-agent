@@ -3,7 +3,6 @@ package controllers
 import "github.com/docker/docker/api/types"
 import "github.com/docker/docker/client"
 import "github.com/humpback/common/models"
-import "golang.org/x/net/context"
 
 import (
 	"encoding/json"
@@ -11,6 +10,7 @@ import (
 	"io"
 	"strings"
 	"time"
+	"context"
 )
 
 // ImageController - handle http request for image

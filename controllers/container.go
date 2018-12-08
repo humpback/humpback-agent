@@ -8,7 +8,6 @@ import "github.com/docker/docker/api/types"
 import "github.com/docker/docker/api/types/container"
 import "github.com/docker/docker/api/types/network"
 import "github.com/docker/go-connections/nat"
-import "golang.org/x/net/context"
 
 import (
 	"encoding/json"
@@ -17,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"context"
 )
 
 // ContainerController - handle http request for container
