@@ -13,10 +13,12 @@ import (
 )
 
 var config *models.Config
+var enableAuthorization bool
+var AuthorizationToken string
 
 /**
- Get config from env, if empty, get it from app config.
- */
+Get config from env, if empty, get it from app config.
+*/
 func getConfigFromEnvOrAppConfig(key string, defaulValue string) string {
 	tmpValue := os.Getenv(key)
 	if tmpValue == "" {
@@ -26,7 +28,7 @@ func getConfigFromEnvOrAppConfig(key string, defaulValue string) string {
 }
 
 /**
- Init - Load config info
+Init - Load config info
 */
 func Init() {
 	envEndpoint := getConfigFromEnvOrAppConfig("DOCKER_ENDPOINT", "unix:///var/run/docker.sock")
@@ -35,7 +37,17 @@ func Init() {
 	envNodeHTTPAddr := getConfigFromEnvOrAppConfig("DOCKER_NODE_HTTPADDR", "0.0.0.0:8500")
 	envContainerPortsRange := getConfigFromEnvOrAppConfig("DOCKER_CONTAINER_PORTS_RANGE", "0-0")
 	envComposePath := getConfigFromEnvOrAppConfig("DOCKER_COMPOSE_PATH", "./compose_files")
+	AuthorizationToken = getConfigFromEnvOrAppConfig("AUTHORIZATION_TOKEN", "humpback")
 
+	// enable authorization
+	enableAuthorization = false
+	if enableAuth := os.Getenv("ENABLE_AUTHORIZATION"); enableAuth != "" {
+		if enableAuth == "1" || enableAuth == "true" {
+			enableAuthorization = true
+		}
+	} else {
+		enableAuthorization = beego.AppConfig.DefaultBool("ENABLE_AUTHORIZATION", false)
+	}
 	var envEnableBuildImg bool
 	if tempEnableBuildImg := os.Getenv("ENABLE_BUILD_IMAGE"); tempEnableBuildImg != "" {
 		if tempEnableBuildImg == "1" || tempEnableBuildImg == "true" {
@@ -44,7 +56,6 @@ func Init() {
 	} else {
 		envEnableBuildImg = beego.AppConfig.DefaultBool("ENABLE_BUILD_IMAGE", false)
 	}
-	
 
 	var envComposePackageMaxSize int64
 	packageMaxSize := os.Getenv("DOCKER_COMPOSE_PACKAGE_MAXSIZE")
@@ -104,6 +115,10 @@ func Init() {
 // GetConfig - return config struct
 func GetConfig() models.Config {
 	return *config
+}
+
+func GetEnableAuthorization() bool {
+	return enableAuthorization
 }
 
 // SetVersion - set app version

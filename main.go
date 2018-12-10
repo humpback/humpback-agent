@@ -9,6 +9,7 @@ import "humpback-agent/routers"
 import "github.com/humpback/humpback-center/cluster/types"
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -53,6 +54,7 @@ func main() {
 	}
 
 	go signalListen()
+	fmt.Println("Server started...")
 	beego.Run()
 }
 

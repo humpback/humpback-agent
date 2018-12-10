@@ -2,8 +2,12 @@ package routers
 
 import "github.com/astaxie/beego"
 import "github.com/humpback/common/models"
-import "humpback-agent/controllers"
-import "humpback-agent/validators"
+import (
+	"humpback-agent/config"
+	"humpback-agent/controllers"
+	"humpback-agent/filters"
+	"humpback-agent/validators"
+)
 
 // Init - Init routers
 func Init(composeStorage *models.ComposeStorage) {
@@ -49,6 +53,9 @@ func Init(composeStorage *models.ComposeStorage) {
 		serviceRouters,
 	)
 	beego.AddNamespace(ns, agentSpace)
+	if config.GetEnableAuthorization() {
+		beego.InsertFilter("/*", beego.BeforeExec, filters.Authorization)
+	}
 
 	beego.InsertFilter("/dockerapi/v2/containers", beego.BeforeExec, validators.CreateContainerValidator)
 	beego.InsertFilter("/v1/containers", beego.BeforeExec, validators.CreateContainerValidator)
