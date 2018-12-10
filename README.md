@@ -4,18 +4,29 @@ Humpback Agent 主要为 [Humpback](https://github.com/humpback/humpback) 平台
 
 ## How to develop
 
-### Prepare
+### #Prepare
 
 1. First, you need an server that installed and already running docker(recommend Linux).
-2. `[Optional]` If you are develop on windows, you should expose docker host with tcp protocol(default is `unix:///var/run/docker.sock`). How to do it? Run: `docker run -d -v /var/run/docker.sock:/var/run/docker.sock -p 0.0.0.0:1234:1234 bobrik/socat TCP-LISTEN:1234,fork UNIX-CONNECT:/var/run/docker.sock` expose your docker host at `tcp:<ip>:1234`.
+2. `[Optional]` If you are develop on windows, you should expose docker host with tcp protocol(default is `unix:///var/run/docker.sock`). How to do it?
 
-### Init dependencies
+```bash
+# convert unix-connect as container port 6666, mapping the container port 6666 as host port 1234
+docker run -d --restart=always \
+    -p 0.0.0.0:1234:6666 \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    alpine/socat \
+    tcp-listen:6666,fork,reuseaddr unix-connect:/var/run/docker.sock
+```
+
+expose your docker host at `tcp:<ip>:1234` [more info](https://hub.docker.com/r/alpine/socat/).
+
+### #Init dependencies
 
 1. Use `go get` install the dependencies.
 
 **Notice: GOPATH is very important!**
 
-### Build & Run
+### #Build & Run
 
 1. `[Optional]`, If you are develop on windows, change the `conf/app.conf DOCKER_ENDPOINT` config.
 
