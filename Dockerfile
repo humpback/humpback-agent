@@ -1,6 +1,6 @@
 FROM frolvlad/alpine-glibc:alpine-3.7
 
-MAINTAINER bobliu bobliu0909@gmail.com
+LABEL author="bobliu" email="bobliu0909@gmail.com"
 
 RUN apk add --no-cache bash
 

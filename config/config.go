@@ -13,34 +13,41 @@ import (
 )
 
 var config *models.Config
+var enableAuthorization bool
+var AuthorizationToken string
 
-// Init - Load config info
+/**
+Get config from env, if empty, get it from app config.
+*/
+func getConfigFromEnvOrAppConfig(key string, defaulValue string) string {
+	tmpValue := os.Getenv(key)
+	if tmpValue == "" {
+		tmpValue = beego.AppConfig.DefaultString(key, defaulValue)
+	}
+	return tmpValue
+}
+
+/**
+Init - Load config info
+*/
 func Init() {
-	envEndpoint := os.Getenv("DOCKER_ENDPOINT")
-	if envEndpoint == "" {
-		envEndpoint = beego.AppConfig.DefaultString("DOCKER_ENDPOINT", "unix:///var/run/docker.sock")
-	}
+	envEndpoint := getConfigFromEnvOrAppConfig("DOCKER_ENDPOINT", "unix:///var/run/docker.sock")
+	envAPIVersion := getConfigFromEnvOrAppConfig("DOCKER_API_VERSION", "v1.20")
+	envRegistryAddr := getConfigFromEnvOrAppConfig("DOCKER_REGISTRY_ADDRESS", "docker.neg")
+	envNodeHTTPAddr := getConfigFromEnvOrAppConfig("DOCKER_NODE_HTTPADDR", "0.0.0.0:8500")
+	envContainerPortsRange := getConfigFromEnvOrAppConfig("DOCKER_CONTAINER_PORTS_RANGE", "0-0")
+	envComposePath := getConfigFromEnvOrAppConfig("DOCKER_COMPOSE_PATH", "./compose_files")
+	AuthorizationToken = getConfigFromEnvOrAppConfig("AUTHORIZATION_TOKEN", "humpback")
 
-	envAPIVersion := os.Getenv("DOCKER_API_VERSION")
-	if envAPIVersion == "" {
-		envAPIVersion = beego.AppConfig.DefaultString("DOCKER_API_VERSION", "v1.20")
+	// enable authorization
+	enableAuthorization = false
+	if enableAuth := os.Getenv("ENABLE_AUTHORIZATION"); enableAuth != "" {
+		if enableAuth == "1" || enableAuth == "true" {
+			enableAuthorization = true
+		}
+	} else {
+		enableAuthorization = beego.AppConfig.DefaultBool("ENABLE_AUTHORIZATION", false)
 	}
-
-	envRegistryAddr := os.Getenv("DOCKER_REGISTRY_ADDRESS")
-	if envRegistryAddr == "" {
-		envRegistryAddr = beego.AppConfig.DefaultString("DOCKER_REGISTRY_ADDRESS", "docker.neg")
-	}
-
-	envNodeHTTPAddr := os.Getenv("DOCKER_NODE_HTTPADDR")
-	if envNodeHTTPAddr == "" {
-		envNodeHTTPAddr = beego.AppConfig.DefaultString("DOCKER_NODE_HTTPADDR", "0.0.0.0:8500")
-	}
-
-	envContainerPortsRange := os.Getenv("DOCKER_CONTAINER_PORTS_RANGE")
-	if envContainerPortsRange == "" {
-		envContainerPortsRange = beego.AppConfig.DefaultString("DOCKER_CONTAINER_PORTS_RANGE", "0-0")
-	}
-
 	var envEnableBuildImg bool
 	if tempEnableBuildImg := os.Getenv("ENABLE_BUILD_IMAGE"); tempEnableBuildImg != "" {
 		if tempEnableBuildImg == "1" || tempEnableBuildImg == "true" {
@@ -48,11 +55,6 @@ func Init() {
 		}
 	} else {
 		envEnableBuildImg = beego.AppConfig.DefaultBool("ENABLE_BUILD_IMAGE", false)
-	}
-
-	envComposePath := os.Getenv("DOCKER_COMPOSE_PATH")
-	if envComposePath == "" {
-		envComposePath = beego.AppConfig.DefaultString("DOCKER_COMPOSE_PATH", "./compose_files")
 	}
 
 	var envComposePackageMaxSize int64
@@ -79,25 +81,11 @@ func Init() {
 		}
 	}
 
-	envClusterURIs := os.Getenv("DOCKER_CLUSTER_URIS")
-	if envClusterURIs == "" {
-		envClusterURIs = beego.AppConfig.DefaultString("DOCKER_CLUSTER_URIS", "zk://127.0.0.1:2181")
-	}
-
-	envClusterName := os.Getenv("DOCKER_CLUSTER_NAME")
-	if envClusterName == "" {
-		envClusterName = beego.AppConfig.DefaultString("DOCKER_CLUSTER_NAME", "humpback/center")
-	}
-
-	envClusterHeartBeat := os.Getenv("DOCKER_CLUSTER_HEARTBEAT")
-	if envClusterHeartBeat == "" {
-		envClusterHeartBeat = beego.AppConfig.DefaultString("DOCKER_CLUSTER_HEARTBEAT", "10s")
-	}
-
-	envClusterTTL := os.Getenv("DOCKER_CLUSTER_TTL")
-	if envClusterTTL == "" {
-		envClusterTTL = beego.AppConfig.DefaultString("DOCKER_CLUSTER_TTL", "35s")
-	}
+	// Cluster config
+	envClusterURIs := getConfigFromEnvOrAppConfig("DOCKER_CLUSTER_URIS", "zk://127.0.0.1:2181")
+	envClusterName := getConfigFromEnvOrAppConfig("DOCKER_CLUSTER_NAME", "humpback/center")
+	envClusterHeartBeat := getConfigFromEnvOrAppConfig("DOCKER_CLUSTER_HEARTBEAT", "10s")
+	envClusterTTL := getConfigFromEnvOrAppConfig("DOCKER_CLUSTER_TTL", "35s")
 
 	var logLevel int
 	if envLogLevel := os.Getenv("LOG_LEVEL"); envLogLevel != "" {
@@ -127,6 +115,10 @@ func Init() {
 // GetConfig - return config struct
 func GetConfig() models.Config {
 	return *config
+}
+
+func GetEnableAuthorization() bool {
+	return enableAuthorization
 }
 
 // SetVersion - set app version

@@ -1,6 +1,8 @@
 package controllers
 
-import "context"
+import (
+	"context"
+)
 
 type InfoController struct {
 	baseController

@@ -3,12 +3,13 @@ package main
 import "github.com/astaxie/beego"
 import "github.com/astaxie/beego/plugins/cors"
 import "github.com/humpback/common/models"
-import "github.com/humpback/humpback-agent/config"
-import "github.com/humpback/humpback-agent/controllers"
-import "github.com/humpback/humpback-agent/routers"
+import "humpback-agent/config"
+import "humpback-agent/controllers"
+import "humpback-agent/routers"
 import "github.com/humpback/humpback-center/cluster/types"
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -53,6 +54,7 @@ func main() {
 	}
 
 	go signalListen()
+	fmt.Println("Server started...")
 	beego.Run()
 }
 
