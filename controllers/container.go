@@ -502,7 +502,9 @@ func upgradeContainer(id, newTag string) (string, int, error) {
 
 	originalName := strings.Replace(container.Name, "/", "", 1)
 	tempName := originalName + strconv.FormatInt(time.Now().Unix(), 10)
-	newImage := strings.Split(container.Config.Image, ":")[0] + ":" + newTag
+	tempPaths := strings.Split(container.Config.Image, "/")
+	tempPaths[len(tempPaths)-1] = strings.Split(tempPaths[len(tempPaths)-1], ":")[0] + ":" + newTag
+	newImage := strings.Join(tempPaths, "/")
 
 	beego.Debug("UPGRADE - Begin try to pull image " + newImage)
 	_, err = tryPullImage(newImage)
