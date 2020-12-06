@@ -11,6 +11,7 @@ ADD humpback-agent /opt/app/humpback-agent/humpback-agent
 ADD conf/app.conf /opt/app/humpback-agent/conf/app.conf
 
 ADD dumb-init /dumb-init
+RUN chmod 777 /dumb-init
 
 ENTRYPOINT ["/dumb-init", "--"]
 
