@@ -1,21 +1,23 @@
 package controller
 
 import (
+	"context"
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/errdefs"
 	v1model "humpback-agent/internal/api/v1/model"
 )
 
 type ContainerControllerInterface interface {
 	BaseController() ControllerInterface
-	Get(request *v1model.GetContainerRequest) *v1model.ObjectResult
-	List(request *v1model.QueryContainerRequest) *v1model.ObjectResult
-	Create(request *v1model.CreateContainerRequest) *v1model.ObjectResult
-	Update(request *v1model.UpdateContainerRequest) *v1model.ObjectResult
-	Delete(request *v1model.DeleteContainerRequest) *v1model.ObjectResult
-	Start(request *v1model.StartContainerRequest) *v1model.ObjectResult
-	Restart(request *v1model.RestartContainerRequest) *v1model.ObjectResult
-	Stop(request *v1model.StopContainerRequest) *v1model.ObjectResult
-	Inspect(request *v1model.InspectContainerRequest) *v1model.ObjectResult
+	Inspect(ctx context.Context, request *v1model.InspectContainerRequest) *v1model.ObjectResult
+	List(ctx context.Context, request *v1model.QueryContainerRequest) *v1model.ObjectResult
+	Create(ctx context.Context, request *v1model.CreateContainerRequest) *v1model.ObjectResult
+	Update(ctx context.Context, request *v1model.UpdateContainerRequest) *v1model.ObjectResult
+	Delete(ctx context.Context, request *v1model.DeleteContainerRequest) *v1model.ObjectResult
+	Start(ctx context.Context, request *v1model.StartContainerRequest) *v1model.ObjectResult
+	Restart(ctx context.Context, request *v1model.RestartContainerRequest) *v1model.ObjectResult
+	Stop(ctx context.Context, request *v1model.StopContainerRequest) *v1model.ObjectResult
 }
 
 type ContainerController struct {
@@ -34,38 +36,47 @@ func (controller *ContainerController) BaseController() ControllerInterface {
 	return controller.baseController
 }
 
-func (controller *ContainerController) Get(request *v1model.GetContainerRequest) *v1model.ObjectResult {
+func (controller *ContainerController) Inspect(ctx context.Context, request *v1model.InspectContainerRequest) *v1model.ObjectResult {
+	var containerBody types.ContainerJSON
+	err := controller.baseController.WithTimeout(ctx, func(ctx context.Context) error {
+		var err error
+		containerBody, err = controller.client.ContainerInspect(ctx, request.ContainerId)
+		return err
+	})
+
+	if err != nil {
+		if errdefs.IsNotFound(err) {
+			return v1model.ObjectNotFoundErrorResult(v1model.ContainerNotFoundCode, v1model.ContainerNotFoundMsg)
+		}
+		return v1model.ObjectInternalErrorResult(v1model.ServerInternalErrorCode, v1model.ServerInternalErrorMsg)
+	}
+	return v1model.ResultWithObject(containerBody)
+}
+
+func (controller *ContainerController) List(ctx context.Context, request *v1model.QueryContainerRequest) *v1model.ObjectResult {
 	return nil
 }
 
-func (controller *ContainerController) List(request *v1model.QueryContainerRequest) *v1model.ObjectResult {
+func (controller *ContainerController) Create(ctx context.Context, request *v1model.CreateContainerRequest) *v1model.ObjectResult {
 	return nil
 }
 
-func (controller *ContainerController) Create(request *v1model.CreateContainerRequest) *v1model.ObjectResult {
+func (controller *ContainerController) Update(ctx context.Context, request *v1model.UpdateContainerRequest) *v1model.ObjectResult {
 	return nil
 }
 
-func (controller *ContainerController) Update(request *v1model.UpdateContainerRequest) *v1model.ObjectResult {
+func (controller *ContainerController) Delete(ctx context.Context, request *v1model.DeleteContainerRequest) *v1model.ObjectResult {
 	return nil
 }
 
-func (controller *ContainerController) Delete(request *v1model.DeleteContainerRequest) *v1model.ObjectResult {
+func (controller *ContainerController) Restart(ctx context.Context, request *v1model.RestartContainerRequest) *v1model.ObjectResult {
 	return nil
 }
 
-func (controller *ContainerController) Restart(request *v1model.RestartContainerRequest) *v1model.ObjectResult {
+func (controller *ContainerController) Start(ctx context.Context, request *v1model.StartContainerRequest) *v1model.ObjectResult {
 	return nil
 }
 
-func (controller *ContainerController) Start(request *v1model.StartContainerRequest) *v1model.ObjectResult {
-	return nil
-}
-
-func (controller *ContainerController) Stop(request *v1model.StopContainerRequest) *v1model.ObjectResult {
-	return nil
-}
-
-func (controller *ContainerController) Inspect(request *v1model.InspectContainerRequest) *v1model.ObjectResult {
+func (controller *ContainerController) Stop(ctx context.Context, request *v1model.StopContainerRequest) *v1model.ObjectResult {
 	return nil
 }

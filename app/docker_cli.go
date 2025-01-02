@@ -3,11 +3,15 @@ package app
 import (
 	"github.com/docker/docker/client"
 	"humpback-agent/internal/config"
+	"net/http"
 )
 
 func buildDockerClient(config *config.DockerConfig) (*client.Client, error) {
 	opts := []client.Opt{
 		client.WithHost(config.Host),
+		client.WithHTTPClient(&http.Client{
+			Timeout: config.DockerTimeoutOpts.Connection,
+		}),
 	}
 
 	if config.DockerTLSOpts.Enabled {

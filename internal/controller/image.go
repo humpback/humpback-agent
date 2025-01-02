@@ -1,18 +1,19 @@
 package controller
 
 import (
+	"context"
 	"github.com/docker/docker/client"
 	v1model "humpback-agent/internal/api/v1/model"
 )
 
 type ImageControllerInterface interface {
 	BaseController() ControllerInterface
-	Get(request *v1model.GetImageRequest) *v1model.ObjectResult
-	List(request *v1model.QueryImageRequest) *v1model.ObjectResult
-	Push(request *v1model.PushImageRequest) *v1model.ObjectResult
-	Pull(request *v1model.PullImageRequest) *v1model.ObjectResult
-	Delete(request *v1model.DeleteImageRequest) *v1model.ObjectResult
-	Inspect(request *v1model.InspectImageRequest) *v1model.ObjectResult
+	Get(ctx context.Context, request *v1model.GetImageRequest) *v1model.ObjectResult
+	List(ctx context.Context, request *v1model.QueryImageRequest) *v1model.ObjectResult
+	Push(ctx context.Context, request *v1model.PushImageRequest) *v1model.ObjectResult
+	Pull(ctx context.Context, request *v1model.PullImageRequest) *v1model.ObjectResult
+	Delete(ctx context.Context, request *v1model.DeleteImageRequest) *v1model.ObjectResult
+	Inspect(ctx context.Context, equest *v1model.InspectImageRequest) *v1model.ObjectResult
 }
 
 type ImageController struct {
@@ -31,26 +32,26 @@ func (controller *ImageController) BaseController() ControllerInterface {
 	return controller.baseController
 }
 
-func (controller *ImageController) Get(request *v1model.GetImageRequest) *v1model.ObjectResult {
+func (controller *ImageController) Get(ctx context.Context, request *v1model.GetImageRequest) *v1model.ObjectResult {
 	return nil
 }
 
-func (controller *ImageController) List(request *v1model.QueryImageRequest) *v1model.ObjectResult {
+func (controller *ImageController) List(ctx context.Context, request *v1model.QueryImageRequest) *v1model.ObjectResult {
 	return nil
 }
 
-func (controller *ImageController) Push(request *v1model.PushImageRequest) *v1model.ObjectResult {
+func (controller *ImageController) Push(ctx context.Context, request *v1model.PushImageRequest) *v1model.ObjectResult {
 	return nil
 }
 
-func (controller *ImageController) Pull(request *v1model.PullImageRequest) *v1model.ObjectResult {
+func (controller *ImageController) Pull(ctx context.Context, request *v1model.PullImageRequest) *v1model.ObjectResult {
 	return nil
 }
 
-func (controller *ImageController) Delete(request *v1model.DeleteImageRequest) *v1model.ObjectResult {
+func (controller *ImageController) Delete(ctx context.Context, request *v1model.DeleteImageRequest) *v1model.ObjectResult {
 	return nil
 }
 
-func (controller *ImageController) Inspect(request *v1model.InspectImageRequest) *v1model.ObjectResult {
+func (controller *ImageController) Inspect(ctx context.Context, request *v1model.InspectImageRequest) *v1model.ObjectResult {
 	return nil
 }

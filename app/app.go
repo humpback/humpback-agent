@@ -36,7 +36,7 @@ func Bootstrap(ctx context.Context) {
 	}
 
 	defer shutdown(ctx)
-	appController := controller.NewController(dockerClient)
+	appController := controller.NewController(dockerClient, appConfig.DockerTimeoutOpts.Request)
 	apiServer, err = api.NewAPIServer(appController, appConfig.APIConfig)
 	if err != nil {
 		logrus.Errorf("Construct api server error, %s", err.Error())
