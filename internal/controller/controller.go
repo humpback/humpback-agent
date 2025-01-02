@@ -25,7 +25,8 @@ type BaseController struct {
 
 func NewController(client *client.Client, reqTimeout time.Duration) ControllerInterface {
 	baseController := &BaseController{
-		client: client,
+		client:     client,
+		reqTimeout: reqTimeout,
 	}
 
 	baseController.image = NewImageController(baseController, client)

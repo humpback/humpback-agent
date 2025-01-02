@@ -15,9 +15,9 @@ docker:
     request: 120s    # 请求超时
   tls:
     enabled: false
-    caCert: "/path/to/ca.pem"
-    cert: "/path/to/cert.pem"
-    key: "/path/to/key.pem"
+    caPath: "/path/to/ca.pem"
+    certPath: "/path/to/cert.pem"
+    keyPath: "/path/to/key.pem"
     insecureSkipVerify: false
   registry:
     default: "registry.example.com"    # 默认镜像仓库

@@ -60,12 +60,12 @@ type DockerRegistryOpts struct {
 }
 
 type DockerConfig struct {
-	Host               string `json:"host" yaml:"host"`
-	Version            string `json:"version" yaml:"version"`
-	AutoNegotiate      bool   `json:"autoNegotiate" yaml:"autoNegotiate"`
-	DockerTimeoutOpts  `json:"timeout" yaml:"timeout"`
-	DockerTLSOpts      `json:"tls" yaml:"tls"`
-	DockerRegistryOpts `json:"registryOpts" yaml:"registryOpts"`
+	Host               string             `json:"host" yaml:"host"`
+	Version            string             `json:"version" yaml:"version"`
+	AutoNegotiate      bool               `json:"autoNegotiate" yaml:"autoNegotiate"`
+	DockerTimeoutOpts  DockerTimeoutOpts  `json:"timeout" yaml:"timeout"`
+	DockerTLSOpts      DockerTLSOpts      `json:"tls" yaml:"tls"`
+	DockerRegistryOpts DockerRegistryOpts `json:"registry" yaml:"registry"`
 }
 
 type AppConfig struct {

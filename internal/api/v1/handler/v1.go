@@ -40,7 +40,7 @@ func (handler *V1Handler) SetRouter(version string, engine *gin.Engine) {
 		containerRouter := routerRouter.Group("container")
 		{
 			containerRouter.GET(":containerId", handler.GetContainerHandleFunc)
-			containerRouter.POST("query", handler.QueryContainerHandleFunc)
+			containerRouter.POST("list", handler.QueryContainerHandleFunc)
 			containerRouter.POST("", handler.CreateContainerHandleFunc)
 			containerRouter.PUT("", handler.UpdateContainerHandleFunc)
 			containerRouter.DELETE(":containerId", handler.DeleteContainerHandleFunc)

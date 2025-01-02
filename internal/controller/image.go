@@ -13,7 +13,6 @@ type ImageControllerInterface interface {
 	Push(ctx context.Context, request *v1model.PushImageRequest) *v1model.ObjectResult
 	Pull(ctx context.Context, request *v1model.PullImageRequest) *v1model.ObjectResult
 	Delete(ctx context.Context, request *v1model.DeleteImageRequest) *v1model.ObjectResult
-	Inspect(ctx context.Context, equest *v1model.InspectImageRequest) *v1model.ObjectResult
 }
 
 type ImageController struct {
@@ -49,9 +48,5 @@ func (controller *ImageController) Pull(ctx context.Context, request *v1model.Pu
 }
 
 func (controller *ImageController) Delete(ctx context.Context, request *v1model.DeleteImageRequest) *v1model.ObjectResult {
-	return nil
-}
-
-func (controller *ImageController) Inspect(ctx context.Context, request *v1model.InspectImageRequest) *v1model.ObjectResult {
 	return nil
 }
