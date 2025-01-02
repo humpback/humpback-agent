@@ -12,6 +12,10 @@ type ContainerControllerInterface interface {
 	Create(request *v1model.CreateContainerRequest) *v1model.ObjectResult
 	Update(request *v1model.UpdateContainerRequest) *v1model.ObjectResult
 	Delete(request *v1model.DeleteContainerRequest) *v1model.ObjectResult
+	Start(request *v1model.StartContainerRequest) *v1model.ObjectResult
+	Restart(request *v1model.RestartContainerRequest) *v1model.ObjectResult
+	Stop(request *v1model.StopContainerRequest) *v1model.ObjectResult
+	Inspect(request *v1model.InspectContainerRequest) *v1model.ObjectResult
 }
 
 type ContainerController struct {
@@ -47,5 +51,21 @@ func (controller *ContainerController) Update(request *v1model.UpdateContainerRe
 }
 
 func (controller *ContainerController) Delete(request *v1model.DeleteContainerRequest) *v1model.ObjectResult {
+	return nil
+}
+
+func (controller *ContainerController) Restart(request *v1model.RestartContainerRequest) *v1model.ObjectResult {
+	return nil
+}
+
+func (controller *ContainerController) Start(request *v1model.StartContainerRequest) *v1model.ObjectResult {
+	return nil
+}
+
+func (controller *ContainerController) Stop(request *v1model.StopContainerRequest) *v1model.ObjectResult {
+	return nil
+}
+
+func (controller *ContainerController) Inspect(request *v1model.InspectContainerRequest) *v1model.ObjectResult {
 	return nil
 }
