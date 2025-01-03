@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	v1model "humpback-agent/internal/api/v1/model"
 )
@@ -44,7 +45,22 @@ func (controller *ImageController) Push(ctx context.Context, request *v1model.Pu
 }
 
 func (controller *ImageController) Pull(ctx context.Context, request *v1model.PullImageRequest) *v1model.ObjectResult {
-	return nil
+	pullOptions := image.PullOptions{
+		All:      request.All,
+		Platform: request.Platform,
+	}
+
+	out, err := controller.client.ImagePull(context.Background(), request.Image, pullOptions)
+	if err != nil {
+		return v1model.ObjectNotFoundErrorResult(v1model.ImagePullErrorCode, v1model.ImagePullErrorMsg)
+	}
+
+	defer out.Close()
+	imageInfo, _, err := controller.client.ImageInspectWithRaw(ctx, request.Image)
+	if err != nil {
+		return v1model.ObjectNotFoundErrorResult(v1model.ImagePullErrorCode, v1model.ImagePullErrorMsg)
+	}
+	return v1model.ResultWithObject(imageInfo.ID)
 }
 
 func (controller *ImageController) Delete(ctx context.Context, request *v1model.DeleteImageRequest) *v1model.ObjectResult {

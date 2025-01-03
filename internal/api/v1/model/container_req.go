@@ -44,8 +44,37 @@ func ResolveQueryContainerRequest(c *gin.Context) (*QueryContainerRequest, *Erro
 }
 
 type CreateContainerRequest struct {
-	//....
+	Name          string               `json:"name"`          // 容器名称
+	Image         string               `json:"image"`         // 镜像名称
+	OnlyCreate    bool                 `json:"onlyCreate"`    // 创建后立即启动
+	AlwaysPull    bool                 `json:"alwaysPull"`    // 是否总是拉取镜像
+	AutoRemove    bool                 `json:"autoRemove"`    // 是否自动删除容器
+	PortMap       map[string]string    `json:"portMap"`       // 端口映射（hostPort:containerPort）
+	PublishAll    bool                 `json:"publishAll"`    // 是否将所有暴露的端口映射到随机主机端口
+	Command       []string             `json:"command"`       // 命令
+	Entrypoint    []string             `json:"entrypoint"`    // 入口点
+	WorkingDir    string               `json:"workingDir"`    // 工作目录
+	Interactive   bool                 `json:"interactive"`   // 是否启用交互模式（-i）
+	TTY           bool                 `json:"tty"`           // 是否启用 TTY（-t）
+	Env           map[string]string    `json:"env"`           // 环境变量
+	Labels        map[string]string    `json:"labels"`        // 标签
+	RestartPolicy string               `json:"restartPolicy"` // 重启策略（never, always, on-failure, unless-stopped）
+	Logger        *ContainerLogger     `json:"logger"`        // Logger 配置
+	Network       *ContainerNetwork    `json:"network"`       // Network 配置
+	Runtime       *ContainerRuntime    `json:"runtime"`       // Runtime 配置
+	Sysctls       *ContainerSysctl     `json:"sysctls"`       // Sysctls 配置
+	Resources     *ContainerResource   `json:"resources"`     // Resource Limits 配置
+	Cap           *ContainerCapability `json:"cap"`           // Capabilities 配置
 }
+
+func ResolveCreateContainerRequest(c *gin.Context) (*CreateContainerRequest, *ErrorResult) {
+	request := CreateContainerRequest{}
+	if err := c.Bind(&request); err != nil {
+		return nil, RequestErrorResult(RequestArgsErrorCode, RequestArgsErrorMsg)
+	}
+	return &request, nil
+}
+
 type UpdateContainerRequest struct{}
 type DeleteContainerRequest struct{}
 type StartContainerRequest struct{}
