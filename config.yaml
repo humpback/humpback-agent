@@ -6,6 +6,14 @@ api:
   versions: ["/v1"]
   accessToken: af1901ff0a01cdb1
 
+# 服务器配置
+server:
+  host: http://127.0.0.1:8765
+  health:
+    interval: 30s
+    timeout: 15s
+
+#Docker客户端配置
 docker:
   host: unix:///var/run/docker.sock    # 或者 "tcp://localhost:2375"
   version: "1.41"                      # 指定 Docker API 版本

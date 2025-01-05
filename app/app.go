@@ -48,6 +48,8 @@ func Bootstrap(ctx context.Context) {
 		return
 	}
 
+	client := NewHealthClient(appController, appConfig.ServerConfig)
+	client.Heartbeat()
 	logrus.Info("Humpback Agent started.")
 	utils.ProcessWaitForSignal(nil)
 }

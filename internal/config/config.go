@@ -68,8 +68,19 @@ type DockerConfig struct {
 	DockerRegistryOpts DockerRegistryOpts `json:"registry" yaml:"registry"`
 }
 
+type ServerHealthConfig struct {
+	Interval time.Duration `json:"interval" yaml:"interval"`
+	Timeout  time.Duration `json:"timeout" yaml:"timeout"`
+}
+
+type ServerConfig struct {
+	Host   string             `json:"host" yaml:"host"`
+	Health ServerHealthConfig `json:"health" yaml:"health"`
+}
+
 type AppConfig struct {
 	*APIConfig    `json:"api" yaml:"api"`
+	*ServerConfig `json:"server" yaml:"server"`
 	*DockerConfig `json:"docker" yaml:"docker"`
 	*LoggerConfig `json:"logger" yaml:"logger"`
 }
