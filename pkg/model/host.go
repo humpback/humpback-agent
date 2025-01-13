@@ -12,10 +12,10 @@ type HostInfo struct {
 	OSInformation string   `json:"osInformation"`
 	KernelVersion string   `json:"kernelVersion"`
 	TotalCPU      int      `json:"totalCPU"`
-	UsedCPU       int      `json:"usedCPU"`
+	UsedCPU       float32  `json:"usedCPU"`
 	CPUUsage      float32  `json:"cpuUsage"`
 	TotalMemoryGB int      `json:"totalMemoryGB"`
-	UsedMemoryGB  int      `json:"usedMemoryGB"`
+	UsedMemoryGB  float32  `json:"usedMemoryGB"`
 	MemoryUsage   float32  `json:"memoryUsage"`
 	HostIPs       []string `json:"hostIPs"`
 	HostPort      int      `json:"hostPort"`
@@ -50,7 +50,7 @@ func GetHostInfo(bind string) HostInfo {
 		TotalCPU:      totalCPU,
 		UsedCPU:       usedCPU,
 		CPUUsage:      cpuUsage,
-		TotalMemoryGB: utils.BytesToGB(totalMEM),
+		TotalMemoryGB: int(utils.BytesToGB(totalMEM)),
 		UsedMemoryGB:  utils.BytesToGB(usedMEM),
 		MemoryUsage:   memUsage,
 		HostIPs:       utils.HostIPs(),

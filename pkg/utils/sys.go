@@ -2,8 +2,8 @@ package utils
 
 import (
 	"fmt"
-	"github.com/shirou/gopsutil/v3/cpu"
-	"github.com/shirou/gopsutil/v3/mem"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/mem"
 	"golang.org/x/sys/unix"
 	"math"
 	"net"
@@ -12,29 +12,29 @@ import (
 	"strings"
 )
 
-func HostCPU() (int, int, float32) {
+func HostCPU() (int, float32, float32) {
 	totalCPU := runtime.NumCPU()
 	// 获取 CPU 使用率
 	percent, err := cpu.Percent(0, false)
 	if err != nil {
-		return totalCPU, 0, 0.00
+		return totalCPU, 0.0, 0.0
 	}
-	//计算cpu使用率
-	cpuUsage := float32(math.Round(percent[0]*100) / 100) // CPU使用率保留两位小数
-	//计算UsedCPU使用个数
-	usedCPU := int(math.Round(float64(totalCPU) * float64(cpuUsage) / 100))
+	// 计算 CPU 使用率
+	cpuUsage := float32(math.Round(percent[0]*100) / 100) // CPU 使用率保留两位小数
+	// 计算 UsedCPU 使用个数
+	usedCPU := float32(totalCPU) * cpuUsage / 100
 	return totalCPU, usedCPU, cpuUsage
 }
 
-func HostMemory() (uint64, uint64, float32) {
+func HostMemory() (uint64, float32, float32) {
 	// 获取内存信息
 	memInfo, err := mem.VirtualMemory()
 	if err != nil {
-		return 0, 0, 0.00
+		return 0, 0.0, 0.0
 	}
 
 	totalMEM := memInfo.Total
-	usedMEM := memInfo.Used
+	usedMEM := float32(memInfo.Used)
 	memUsage := float32(math.Round(memInfo.UsedPercent*100) / 100) // 内存使用率保留两位小数
 	return totalMEM, usedMEM, memUsage
 }
@@ -155,8 +155,21 @@ func ContainerName(names []string) string {
 	return names[0]
 }
 
-func BytesToGB(size uint64) int {
-	return int(size / 1024 / 1024 / 1024)
+func BytesToGB(size any) float32 {
+	var ret float32
+	switch v := size.(type) {
+	case int:
+		ret = float32(v) / 1024 / 1024 / 1024
+	case int64:
+		ret = float32(v) / 1024 / 1024 / 1024
+	case uint64:
+		ret = float32(v) / 1024 / 1024 / 1024
+	case float32:
+		ret = v / 1024 / 1024 / 1024
+	case float64:
+		ret = float32(v / 1024 / 1024 / 1024)
+	}
+	return float32(math.Round(float64(ret)*100) / 100)
 }
 
 func BindPort(bind string) int {
