@@ -2,7 +2,7 @@ package handler
 
 import (
 	"github.com/gin-gonic/gin"
-	v1model "humpback-agent/internal/api/v1/model"
+	v1model "humpback-agent/pkg/api/v1/model"
 	"net/http"
 )
 

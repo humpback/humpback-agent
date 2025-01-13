@@ -3,9 +3,9 @@ package handler
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"humpback-agent/internal/api/factory"
-	"humpback-agent/internal/api/v1/model"
-	"humpback-agent/internal/controller"
+	"humpback-agent/pkg/api/factory"
+	"humpback-agent/pkg/api/v1/model"
+	"humpback-agent/pkg/controller"
 	"net/http"
 	"time"
 )

@@ -2,21 +2,41 @@ package utils
 
 import (
 	"fmt"
+	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/mem"
 	"golang.org/x/sys/unix"
-	"humpback-agent/internal/model"
+	"math"
 	"net"
-	"os"
 	"runtime"
+	"strconv"
 	"strings"
 )
 
-func HostMemory() (uint64, uint64, uint64) {
+func HostCPU() (int, int, float32) {
+	totalCPU := runtime.NumCPU()
+	// 获取 CPU 使用率
+	percent, err := cpu.Percent(0, false)
+	if err != nil {
+		return totalCPU, 0, 0.00
+	}
+	//计算cpu使用率
+	cpuUsage := float32(math.Round(percent[0]*100) / 100) // CPU使用率保留两位小数
+	//计算UsedCPU使用个数
+	usedCPU := int(math.Round(float64(totalCPU) * float64(cpuUsage) / 100))
+	return totalCPU, usedCPU, cpuUsage
+}
+
+func HostMemory() (uint64, uint64, float32) {
+	// 获取内存信息
 	memInfo, err := mem.VirtualMemory()
 	if err != nil {
-		return 0, 0, 0
+		return 0, 0, 0.00
 	}
-	return memInfo.Total, memInfo.Available, memInfo.Free
+
+	totalMEM := memInfo.Total
+	usedMEM := memInfo.Used
+	memUsage := float32(math.Round(memInfo.UsedPercent*100) / 100) // 内存使用率保留两位小数
+	return totalMEM, usedMEM, memUsage
 }
 
 func HostKernelVersion() string {
@@ -24,7 +44,22 @@ func HostKernelVersion() string {
 	if err := unix.Uname(&utsname); err != nil {
 		return "unknown"
 	}
-	return string(utsname.Release[:])
+
+	n := 0
+	for i, b := range utsname.Release {
+		if b == 0 {
+			break
+		}
+		n = i + 1
+	}
+
+	kernelVersion := ""
+	if n > 0 {
+		kernelVersion = string(utsname.Release[:n])
+	} else {
+		kernelVersion = string(utsname.Release[:])
+	}
+	return string(kernelVersion)
 }
 
 func HostIPs() []string {
@@ -109,24 +144,6 @@ func isExternalIP(ip string) bool {
 	return false
 }
 
-func HostInfo() model.HostInfo {
-	hostname, _ := os.Hostname()
-	osInfo := fmt.Sprintf("%s %s", runtime.GOOS, runtime.GOARCH)
-	kernelVersion := HostKernelVersion()
-	totalCPU := runtime.NumCPU()
-	totalMem, availableMem, freeMem := HostMemory()
-	return model.HostInfo{
-		Hostname:      hostname,
-		OSInformation: osInfo,
-		KernelVersion: kernelVersion,
-		TotalCPU:      totalCPU,
-		TotalMEM:      totalMem,
-		AvailableMEM:  availableMem,
-		FreeMEM:       freeMem,
-		HostIPs:       HostIPs(),
-	}
-}
-
 func ContainerName(names []string) string {
 	if names == nil || len(names) == 0 {
 		return ""
@@ -136,4 +153,35 @@ func ContainerName(names []string) string {
 		return names[0][1:]
 	}
 	return names[0]
+}
+
+func BytesToGB(size uint64) int {
+	return int(size / 1024 / 1024 / 1024)
+}
+
+func BindPort(bind string) int {
+	if bind == "" {
+		return 0
+	}
+
+	// 如果字符串包含 ":"，说明可能是 IP:Port 或 :Port 格式
+	if strings.Contains(bind, ":") {
+		// 按 ":" 分割字符串
+		parts := strings.Split(bind, ":")
+		// 取最后一个部分作为端口
+		portStr := parts[len(parts)-1]
+		// 将端口字符串转换为 int
+		port, err := strconv.Atoi(portStr)
+		if err != nil {
+			return 0
+		}
+		return port
+	}
+
+	// 如果字符串不包含 ":"，说明是纯端口号
+	port, err := strconv.Atoi(bind)
+	if err != nil {
+		return 0
+	}
+	return port
 }

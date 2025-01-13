@@ -1,11 +1,11 @@
-package app
+package docker
 
 import (
 	"github.com/docker/docker/client"
-	"humpback-agent/internal/config"
+	"humpback-agent/pkg/config"
 )
 
-func buildDockerClient(config *config.DockerConfig) (*client.Client, error) {
+func BuildDockerClient(config *config.DockerConfig) (*client.Client, error) {
 	opts := []client.Opt{
 		client.WithHost(config.Host),
 		//client.WithHTTPClient(&http.Client{

@@ -1,6 +1,6 @@
 #API
 api:
-  bind: 0.0.0.0:8999
+  bind: 0.0.0.0:8018
   mode: debug
   middlewares: ["cors", "recovery", "logger"]
   versions: ["/v1"]
