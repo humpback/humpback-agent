@@ -15,4 +15,5 @@ const (
 	//Network error codes
 	NetworkNotFoundCode    = "NET10000"
 	NetworkCreateErrorCode = "NET10001"
+	NetworkDeleteErrorCode = "NET10002"
 )

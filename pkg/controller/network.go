@@ -12,6 +12,7 @@ type NetworkControllerInterface interface {
 	BaseController() ControllerInterface
 	Get(ctx context.Context, request *v1model.GetNetworkRequest) *v1model.ObjectResult
 	Create(ctx context.Context, request *v1model.CreateNetworkRequest) *v1model.ObjectResult
+	Delete(ctx context.Context, request *v1model.DeleteNetworkRequest) *v1model.ObjectResult
 }
 
 type NetworkController struct {
@@ -62,11 +63,26 @@ func (controller *NetworkController) Create(ctx context.Context, request *v1mode
 		var createdErr error
 		networkInfo, createdErr = controller.client.NetworkCreate(ctx, request.NetworkName, network.CreateOptions{
 			Driver: request.Driver,
-			Scope:  "local",
+			Scope:  request.Scope,
 		})
 		return createdErr
 	}); err != nil {
 		return v1model.ObjectInternalErrorResult(v1model.NetworkCreateErrorCode, err.Error())
 	}
 	return v1model.ResultWithObjectId(networkInfo.ID)
+}
+
+func (controller *NetworkController) Delete(ctx context.Context, request *v1model.DeleteNetworkRequest) *v1model.ObjectResult {
+	var networkId string
+	if err := controller.baseController.WithTimeout(ctx, func(ctx context.Context) error {
+		networkBody, inspectErr := controller.client.NetworkInspect(ctx, request.NetworkId, network.InspectOptions{Scope: request.Scope})
+		if inspectErr != nil {
+			return inspectErr
+		}
+		networkId = networkBody.ID
+		return controller.client.NetworkRemove(ctx, networkId)
+	}); err != nil {
+		return v1model.ObjectInternalErrorResult(v1model.NetworkDeleteErrorCode, err.Error())
+	}
+	return v1model.ResultWithObjectId(networkId)
 }

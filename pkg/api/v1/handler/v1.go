@@ -24,6 +24,8 @@ type V1TaskType int
 const (
 	ContainerCreateTask V1TaskType = 1
 	ContainerDeleteTask V1TaskType = 2
+	NetworkCreateTask   V1TaskType = 3
+	NetworkDeleteTask   V1TaskType = 4
 )
 
 type V1Task struct {
@@ -58,6 +60,12 @@ func (handler *V1Handler) watchTasks() {
 			case ContainerDeleteTask:
 				container := handler.Container()
 				go container.Delete(context.Background(), task.TaskBody.(*model.DeleteContainerRequest))
+			case NetworkCreateTask:
+				network := handler.Network()
+				go network.Create(context.Background(), task.TaskBody.(*model.CreateNetworkRequest))
+			case NetworkDeleteTask:
+				network := handler.Network()
+				go network.Delete(context.Background(), task.TaskBody.(*model.DeleteNetworkRequest))
 			}
 		}
 	}

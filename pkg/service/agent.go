@@ -142,9 +142,11 @@ func (agentService *AgentService) handleDockerEvent(message events.Message) {
 			if err != nil {
 				logrus.Errorf("Docker create container %s event, %v", message.Actor.ID, err)
 			}
-			agentService.Lock()
-			agentService.containers[containerInfo.ContainerId] = containerInfo
-			agentService.Unlock()
+			if containerInfo != nil {
+				agentService.Lock()
+				agentService.containers[containerInfo.ContainerId] = containerInfo
+				agentService.Unlock()
+			}
 		case "destroy":
 			agentService.Lock()
 			delete(agentService.containers, message.Actor.ID)
