@@ -82,13 +82,17 @@ func (agentService *AgentService) Shutdown(ctx context.Context) {
 func (agentService *AgentService) loadDockerContainers(ctx context.Context) error {
 	result := agentService.controller.Container().List(ctx, &v1model.QueryContainerRequest{All: true})
 	if result.Error != nil {
-		return fmt.Errorf("load docker containers error")
+		return fmt.Errorf("load container list error")
 	}
 
 	containers := result.Object.([]types.Container)
 	agentService.Lock()
 	for _, container := range containers {
-		containerInfo := model.ParseContainerInfo(container)
+		result = agentService.controller.Container().Get(ctx, &v1model.GetContainerRequest{ContainerId: container.ID})
+		if result.Error != nil {
+			return fmt.Errorf("load container inspect %s error, %v", container.ID, result.Error)
+		}
+		containerInfo := model.ParseContainerInfo(result.Object.(types.ContainerJSON))
 		agentService.containers[container.ID] = containerInfo
 	}
 	agentService.Unlock()
@@ -96,17 +100,11 @@ func (agentService *AgentService) loadDockerContainers(ctx context.Context) erro
 }
 
 func (agentService *AgentService) fetchContainer(ctx context.Context, containerId string) (*model.ContainerInfo, error) {
-	queryFilter := map[string]string{"id": containerId}
-	result := agentService.controller.Container().List(ctx, &v1model.QueryContainerRequest{All: true, Filters: queryFilter})
+	result := agentService.controller.Container().Get(ctx, &v1model.GetContainerRequest{ContainerId: containerId})
 	if result.Error != nil {
-		return nil, fmt.Errorf("fetch container %s error", containerId)
+		return nil, fmt.Errorf("get container %s error, %v", containerId, result.Error)
 	}
-
-	containers := result.Object.([]types.Container)
-	if len(containers) > 0 {
-		return model.ParseContainerInfo(containers[0]), nil
-	}
-	return nil, nil
+	return model.ParseContainerInfo(result.Object.(types.ContainerJSON)), nil
 }
 
 func (agentService *AgentService) heartbeatLoop() {

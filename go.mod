@@ -1,6 +1,6 @@
 module humpback-agent
 
-go 1.23.3
+go 1.24.0
 
 require (
 	github.com/docker/docker v27.4.1+incompatible

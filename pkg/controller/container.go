@@ -59,12 +59,12 @@ func (controller *ContainerController) Get(ctx context.Context, request *v1model
 func (controller *ContainerController) List(ctx context.Context, request *v1model.QueryContainerRequest) *v1model.ObjectResult {
 	var containers []types.Container
 	err := controller.baseController.WithTimeout(ctx, func(ctx context.Context) error {
-		var err error
 		filterArgs := filters.NewArgs()
 		for key, value := range request.Filters {
 			filterArgs.Add(key, value)
 		}
-		containers, err = controller.client.ContainerList(ctx, container.ListOptions{
+		var queryErr error
+		containers, queryErr = controller.client.ContainerList(ctx, container.ListOptions{
 			All:     request.All, // 是否包括已停止的容器
 			Size:    request.Size,
 			Latest:  request.Latest,
@@ -73,7 +73,7 @@ func (controller *ContainerController) List(ctx context.Context, request *v1mode
 			Limit:   request.Limit,
 			Filters: filterArgs,
 		})
-		return err
+		return queryErr
 	})
 
 	if err != nil {

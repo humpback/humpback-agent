@@ -144,15 +144,11 @@ func isExternalIP(ip string) bool {
 	return false
 }
 
-func ContainerName(names []string) string {
-	if names == nil || len(names) == 0 {
-		return ""
+func ContainerName(name string) string {
+	if strings.HasPrefix(name, "/") {
+		return name[1:]
 	}
-
-	if strings.HasPrefix(names[0], "/") {
-		return names[0][1:]
-	}
-	return names[0]
+	return name
 }
 
 func BytesToGB(size any) float32 {
