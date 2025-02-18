@@ -184,12 +184,6 @@ func (agentService *AgentService) sendHealthRequest(ctx context.Context) error {
 		Containers:   containers,
 	}
 
-	fmt.Println("-------------------------------------------------------")
-	for _, container := range containers {
-		fmt.Printf("%s\t\t%s\t\t%s\n", container.ContainerName, container.State, container.Status)
-	}
-	fmt.Println("-------------------------------------------------------")
-
 	data, err := json.Marshal(hostHealthRequest)
 	if err != nil {
 		return err
