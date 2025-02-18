@@ -135,7 +135,7 @@ func (agentService *AgentService) watchDockerEvents(ctx context.Context, dockerC
 func (agentService *AgentService) handleDockerEvent(message events.Message) {
 	if message.Type == "container" {
 		switch message.Action {
-		case "create", "start", "stop", "die", "kill":
+		case "create", "start", "stop", "die", "kill", "healthy", "unhealthy":
 			containerInfo, err := agentService.fetchContainer(context.Background(), message.Actor.ID)
 			if err != nil {
 				logrus.Errorf("Docker create container %s event, %v", message.Actor.ID, err)
@@ -144,8 +144,18 @@ func (agentService *AgentService) handleDockerEvent(message events.Message) {
 				agentService.Lock()
 				agentService.containers[containerInfo.ContainerId] = containerInfo
 				agentService.Unlock()
+				agentService.sendHealthRequest(context.Background())
 			}
-		case "destroy":
+		case "destroy", "remove", "delete":
+			//修改容器状态
+			agentService.Lock()
+			if containerInfo, ret := agentService.containers[message.Actor.ID]; ret {
+				containerInfo.State = model.ContainerStatusRemoved
+			}
+			agentService.Unlock()
+			//主动通知一次心跳
+			agentService.sendHealthRequest(context.Background())
+			//缓存删除容器
 			agentService.Lock()
 			delete(agentService.containers, message.Actor.ID)
 			agentService.Unlock()
@@ -173,6 +183,12 @@ func (agentService *AgentService) sendHealthRequest(ctx context.Context) error {
 		DockerEngine: *dockerEngineInfo,
 		Containers:   containers,
 	}
+
+	fmt.Println("-------------------------------------------------------")
+	for _, container := range containers {
+		fmt.Printf("%s\t\t%s\t\t%s\n", container.ContainerName, container.State, container.Status)
+	}
+	fmt.Println("-------------------------------------------------------")
 
 	data, err := json.Marshal(hostHealthRequest)
 	if err != nil {

@@ -11,6 +11,34 @@ import (
 	"time"
 )
 
+const (
+	ContainerStatusPending  = "Pending"
+	ContainerStatusStarting = "Starting"
+	ContainerStatusCreated  = "Created"
+	ContainerStatusRunning  = "Running"
+	ContainerStatusFailed   = "Failed"
+	ContainerStatusExited   = "Exited"
+	ContainerStatusRemoved  = "Removed"
+	ContainerStatusWarning  = "Warning"
+)
+
+var stateMap = map[string]string{
+	"healthy":   ContainerStatusRunning,
+	"unhealthy": ContainerStatusFailed,
+	"starting":  ContainerStatusStarting,
+	"running":   ContainerStatusRunning,
+	"exited":    ContainerStatusExited,
+	"create":    ContainerStatusCreated,
+	"created":   ContainerStatusCreated,
+	"stop":      ContainerStatusExited,
+	"stopped":   ContainerStatusExited,
+	"destroy":   ContainerStatusRemoved,
+	"remove":    ContainerStatusRemoved,
+	"delete":    ContainerStatusRemoved,
+	"pending":   ContainerStatusPending,
+	"warning":   ContainerStatusWarning,
+}
+
 type ContainerPort struct {
 	BindIP      string `json:"bindIP"`
 	PrivatePort uint16 `json:"privatePort"`
@@ -49,25 +77,29 @@ func ParseContainerInfo(container types.ContainerJSON) *ContainerInfo {
 	state, status := "", ""
 	startedTimestamp, finishedTimestamp := int64(0), int64(0)
 	if container.State != nil {
-		state = container.State.Status
-		startedAt, err := time.Parse(time.RFC3339Nano, container.State.StartedAt)
-		if err == nil {
-			startedTimestamp = startedAt.UnixMilli()
+		var err error
+		var startedAt time.Time
+		var finishedAt time.Time
+		if container.State.Status != "created" {
+			if startedAt, err = time.Parse(time.RFC3339Nano, container.State.StartedAt); err == nil {
+				startedTimestamp = startedAt.UnixMilli()
+			}
+
+			if finishedAt, err = time.Parse(time.RFC3339Nano, container.State.FinishedAt); err == nil {
+				finishedTimestamp = finishedAt.UnixMilli()
+			}
 		}
 
-		finishedAt, err := time.Parse(time.RFC3339Nano, container.State.FinishedAt)
-		if err == nil {
-			finishedTimestamp = finishedAt.UnixMilli()
-		}
-
-		if state != "exited" {
-			status = utils.HumanDuration(time.Since(startedAt))
-		} else {
-			state = fmt.Sprintf("%s(%d)", state, container.State.ExitCode)
+		if container.State.Status == "exited" {
 			status = utils.HumanDuration(time.Since(finishedAt))
+		} else {
+			if container.State.Status != "created" {
+				status = utils.HumanDuration(time.Since(startedAt))
+			}
 		}
 	}
 
+	state = stateMap[container.State.Status]
 	return &ContainerInfo{
 		ContainerId:   container.ID,
 		ContainerName: utils.ContainerName(container.Name),

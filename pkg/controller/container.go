@@ -167,8 +167,6 @@ func (controller *ContainerController) Create(ctx context.Context, request *v1mo
 	if err != nil {
 		return v1model.ObjectInternalErrorResult(v1model.ContainerCreateErrorCode, err.Error())
 	}
-
-	//TODO: 主动汇报一次心跳
 	return v1model.ResultWithObjectId(containerInfo.ID)
 }
 
@@ -188,8 +186,6 @@ func (controller *ContainerController) Delete(ctx context.Context, request *v1mo
 	}); err != nil {
 		return v1model.ObjectInternalErrorResult(v1model.ContainerDeleteErrorCode, err.Error())
 	}
-
-	//TODO: 主动汇报一次心跳
 	return v1model.ResultWithObjectId(containerId)
 }
 
