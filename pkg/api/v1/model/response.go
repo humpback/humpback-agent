@@ -61,6 +61,12 @@ func StdSucceedResult() *StdResult {
 	}
 }
 
+func StdAcceptResult() *StdResult {
+	return &StdResult{
+		Msg: "accepted",
+	}
+}
+
 func StdInternalErrorResult(code string, errMsg string) *StdResult {
 	return &StdResult{
 		Error: InternalErrorResult(code, errMsg),

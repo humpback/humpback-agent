@@ -7,7 +7,7 @@ import (
 )
 
 func (handler *V1Handler) GetContainerHandleFunc(c *gin.Context) {
-	request, err := v1model.ResolveGetContainerRequest(c)
+	request, err := v1model.BindGetContainerRequest(c)
 	if err != nil {
 		c.JSON(err.StatusCode, err)
 		return
@@ -22,7 +22,7 @@ func (handler *V1Handler) GetContainerHandleFunc(c *gin.Context) {
 }
 
 func (handler *V1Handler) QueryContainerHandleFunc(c *gin.Context) {
-	request, err := v1model.ResolveQueryContainerRequest(c)
+	request, err := v1model.BindQueryContainerRequest(c)
 	if err != nil {
 		c.JSON(err.StatusCode, err)
 		return
@@ -37,24 +37,26 @@ func (handler *V1Handler) QueryContainerHandleFunc(c *gin.Context) {
 }
 
 func (handler *V1Handler) CreateContainerHandleFunc(c *gin.Context) {
-	request, err := v1model.ResolveCreateContainerRequest(c)
+	request, err := v1model.BindCreateContainerRequest(c)
 	if err != nil {
 		c.JSON(err.StatusCode, err)
 		return
 	}
 
-	result := handler.Container().Create(c.Request.Context(), request)
-	if result.Error != nil {
-		c.JSON(result.Error.StatusCode, result.Error)
-		return
-	}
-	c.JSON(http.StatusOK, result)
+	handler.taskChan <- &V1Task{ContainerCreateTask, request}
+	c.JSON(http.StatusAccepted, v1model.StdAcceptResult())
 }
 
 func (handler *V1Handler) UpdateContainerHandleFunc(c *gin.Context) {
-
 }
 
 func (handler *V1Handler) DeleteContainerHandleFunc(c *gin.Context) {
+	request, err := v1model.BindDeleteContainerRequest(c)
+	if err != nil {
+		c.JSON(err.StatusCode, err)
+		return
+	}
 
+	handler.taskChan <- &V1Task{ContainerDeleteTask, request}
+	c.JSON(http.StatusAccepted, v1model.StdAcceptResult())
 }

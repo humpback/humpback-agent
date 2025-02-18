@@ -16,6 +16,7 @@ type ControllerInterface interface {
 	InternalController
 	Image() ImageControllerInterface
 	Container() ContainerControllerInterface
+	Network() NetworkControllerInterface
 }
 
 type BaseController struct {
@@ -23,6 +24,7 @@ type BaseController struct {
 	reqTimeout time.Duration
 	image      ImageControllerInterface
 	container  ContainerControllerInterface
+	network    NetworkControllerInterface
 }
 
 func NewController(client *client.Client, reqTimeout time.Duration) ControllerInterface {
@@ -33,6 +35,7 @@ func NewController(client *client.Client, reqTimeout time.Duration) ControllerIn
 
 	baseController.image = NewImageController(baseController, client)
 	baseController.container = NewContainerController(baseController, client)
+	baseController.network = NewNetworkController(baseController, client)
 	return baseController
 }
 
@@ -70,4 +73,8 @@ func (controller *BaseController) Image() ImageControllerInterface {
 
 func (controller *BaseController) Container() ContainerControllerInterface {
 	return controller.container
+}
+
+func (controller *BaseController) Network() NetworkControllerInterface {
+	return controller.network
 }

@@ -6,22 +6,24 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/errdefs"
-	"humpback-agent/pkg/api/v1/model"
-	"humpback-agent/pkg/utils"
+	"github.com/docker/go-connections/nat"
+	v1model "humpback-agent/pkg/api/v1/model"
+	"strconv"
+	"strings"
 )
 
 type ContainerControllerInterface interface {
 	BaseController() ControllerInterface
-	Get(ctx context.Context, request *model.GetContainerRequest) *model.ObjectResult
-	List(ctx context.Context, request *model.QueryContainerRequest) *model.ObjectResult
-	Create(ctx context.Context, request *model.CreateContainerRequest) *model.ObjectResult
-	Update(ctx context.Context, request *model.UpdateContainerRequest) *model.ObjectResult
-	Delete(ctx context.Context, request *model.DeleteContainerRequest) *model.ObjectResult
-	Start(ctx context.Context, request *model.StartContainerRequest) *model.ObjectResult
-	Restart(ctx context.Context, request *model.RestartContainerRequest) *model.ObjectResult
-	Stop(ctx context.Context, request *model.StopContainerRequest) *model.ObjectResult
+	Get(ctx context.Context, request *v1model.GetContainerRequest) *v1model.ObjectResult
+	List(ctx context.Context, request *v1model.QueryContainerRequest) *v1model.ObjectResult
+	Create(ctx context.Context, request *v1model.CreateContainerRequest) *v1model.ObjectResult
+	Update(ctx context.Context, request *v1model.UpdateContainerRequest) *v1model.ObjectResult
+	Delete(ctx context.Context, request *v1model.DeleteContainerRequest) *v1model.ObjectResult
+	Start(ctx context.Context, request *v1model.StartContainerRequest) *v1model.ObjectResult
+	Restart(ctx context.Context, request *v1model.RestartContainerRequest) *v1model.ObjectResult
+	Stop(ctx context.Context, request *v1model.StopContainerRequest) *v1model.ObjectResult
 }
 
 type ContainerController struct {
@@ -40,7 +42,7 @@ func (controller *ContainerController) BaseController() ControllerInterface {
 	return controller.baseController
 }
 
-func (controller *ContainerController) Get(ctx context.Context, request *model.GetContainerRequest) *model.ObjectResult {
+func (controller *ContainerController) Get(ctx context.Context, request *v1model.GetContainerRequest) *v1model.ObjectResult {
 	var containerBody types.ContainerJSON
 	err := controller.baseController.WithTimeout(ctx, func(ctx context.Context) error {
 		var err error
@@ -49,15 +51,12 @@ func (controller *ContainerController) Get(ctx context.Context, request *model.G
 	})
 
 	if err != nil {
-		if errdefs.IsNotFound(err) {
-			return model.ObjectNotFoundErrorResult(model.ContainerNotFoundCode, model.ContainerNotFoundMsg)
-		}
-		return model.ObjectInternalErrorResult(model.ServerInternalErrorCode, model.ServerInternalErrorMsg)
+		return v1model.ObjectInternalErrorResult(v1model.ServerInternalErrorCode, err.Error())
 	}
-	return model.ResultWithObject(containerBody)
+	return v1model.ResultWithObject(containerBody)
 }
 
-func (controller *ContainerController) List(ctx context.Context, request *model.QueryContainerRequest) *model.ObjectResult {
+func (controller *ContainerController) List(ctx context.Context, request *v1model.QueryContainerRequest) *v1model.ObjectResult {
 	var containers []types.Container
 	err := controller.baseController.WithTimeout(ctx, func(ctx context.Context) error {
 		var err error
@@ -78,110 +77,126 @@ func (controller *ContainerController) List(ctx context.Context, request *model.
 	})
 
 	if err != nil {
-		return model.ObjectInternalErrorResult(model.ServerInternalErrorCode, model.ServerInternalErrorMsg)
+		return v1model.ObjectInternalErrorResult(v1model.ServerInternalErrorCode, v1model.ServerInternalErrorMsg)
 	}
-	return model.ResultWithObject(containers)
+	return v1model.ResultWithObject(containers)
 }
 
-func (controller *ContainerController) Create(ctx context.Context, request *model.CreateContainerRequest) *model.ObjectResult {
-	// [1] 拉取镜像（如果需要）
-	if request.AlwaysPull {
-		if ret := controller.BaseController().Image().Pull(ctx, &model.PullImageRequest{Image: request.Image}); ret.Error != nil {
+func (controller *ContainerController) Create(ctx context.Context, request *v1model.CreateContainerRequest) *v1model.ObjectResult {
+	if request.AlwaysPull { //拉取镜像（如果需要）
+		if ret := controller.BaseController().Image().Pull(ctx, &v1model.PullImageRequest{Image: request.Image}); ret.Error != nil {
 			return ret
 		}
 	}
 
 	containerConfig := &container.Config{
-		Image:      request.Image,
-		Cmd:        request.Command,
-		Entrypoint: request.Entrypoint,
-		WorkingDir: request.WorkingDir,
-		Tty:        request.TTY,
-		OpenStdin:  request.Interactive,
-		Env:        utils.MapToEnv(request.Env),
-		Labels:     request.Labels,
+		Image:  request.Image,
+		Env:    request.Envs,
+		Labels: request.Labels,
 	}
 
-	hostConfig := &container.HostConfig{
-		AutoRemove:      request.AutoRemove,
-		PortBindings:    utils.MapPorts(request.PortMap),
-		PublishAllPorts: request.PublishAll,
-		LogConfig:       container.LogConfig{
-			//Type:   request.Logger.Driver,
-			//Config: request.Logger.Options,
-		},
-		//Binds:       utils.MapToBinds(request.),
-		//NetworkMode: container.NetworkMode(request.Network.Mode),
-		//RestartPolicy: container.RestartPolicy{
-		//	Name: request.RestartPolicy,
-		//},
-		//Privileged: request.Runtime.Privileged,
-		//Init:       &request.Runtime.Init,
-		//Runtime:    request.Runtime.Runtime,
-		//Sysctls:    request.Sysctls,
-		//ShmSize:    request.ShmSize,
-		//Resources: container.Resources{
-		//	Memory:            request.MemoryLimit,
-		//	MemoryReservation: request.MemoryReserve,
-		//	CPUQuota:          request.CPUQuota,
-		//},
-		//CapAdd:  request.CapAdd,
-		//CapDrop: request.CapDrop,
+	if request.Command != "" {
+		containerConfig.Cmd = strslice.StrSlice{request.Command}
 	}
 
-	// [4] 配置网络选项
-	networkConfig := &network.NetworkingConfig{
-		//EndpointsConfig: map[string]*network.EndpointSettings{
-		//	request.NetworkMode: {
-		//		IPAMConfig: &network.EndpointIPAMConfig{
-		//			IPv4Address: request.IPv4Address,
-		//			IPv6Address: request.IPv6Address,
-		//		},
-		//		MacAddress: request.MacAddress,
-		//	},
-		//},
+	hostConfig := &container.HostConfig{}
+	if request.RestartPolicy != nil {
+		hostConfig.RestartPolicy = container.RestartPolicy{
+			Name:              container.RestartPolicyMode(request.RestartPolicy.Mode),
+			MaximumRetryCount: request.RestartPolicy.MaxRetryCount,
+		}
+	}
+
+	var networkConfig *network.NetworkingConfig
+	if request.Network != nil {
+		if request.Network.Mode == v1model.NetworkModeCustom { //构建自定义网络
+			containerConfig.Hostname = request.Network.Hostname
+			if request.Network.NetworkName != "" {
+				networkResult := controller.BaseController().Network().Create(ctx, &v1model.CreateNetworkRequest{NetworkName: request.Network.NetworkName, Driver: "bridge", Scope: "local"})
+				if networkResult.Error != nil {
+					return networkResult
+				}
+				hostConfig.NetworkMode = container.NetworkMode(request.Network.NetworkName)
+				networkConfig = &network.NetworkingConfig{
+					EndpointsConfig: map[string]*network.EndpointSettings{
+						request.Network.NetworkName: {
+							NetworkID: networkResult.ObjectId,
+						},
+					},
+				}
+			}
+		} else if request.Network.Mode == v1model.NetworkModeHost {
+			hostConfig.NetworkMode = container.NetworkMode(request.Network.Mode)
+			hostConfig.PublishAllPorts = true
+		} else if request.Network.Mode == v1model.NetworkModeBridge { // 桥接, 配置 PortBindings
+			hostConfig.NetworkMode = container.NetworkMode(request.Network.Mode)
+			containerConfig.Hostname = request.Network.Hostname
+			portBindings := nat.PortMap{}
+			for _, bindPort := range request.Network.Ports {
+				proto := strings.ToLower(bindPort.Protocol)
+				if proto != "tcp" && proto != "udp" {
+					proto = "tcp" // 默认使用 TCP
+				}
+				port, err := nat.NewPort(proto, strconv.Itoa(int(bindPort.ContainerPort)))
+				if err != nil {
+					return v1model.ObjectInternalErrorResult(v1model.ContainerCreateErrorCode, err.Error())
+				}
+				portBindings[port] = []nat.PortBinding{{HostPort: strconv.Itoa(int(bindPort.HostPort))}}
+			}
+			hostConfig.PortBindings = portBindings
+			networkConfig = &network.NetworkingConfig{
+				EndpointsConfig: map[string]*network.EndpointSettings{
+					"bridge": {
+						NetworkID: "bridge",
+					},
+				},
+			}
+		}
 	}
 
 	var containerInfo container.CreateResponse
 	err := controller.baseController.WithTimeout(ctx, func(ctx context.Context) error {
-		var err error
-		containerInfo, err = controller.client.ContainerCreate(ctx, containerConfig, hostConfig, networkConfig, nil, request.Name)
-		if err != nil {
-			return err
+		var createdErr error
+		containerInfo, createdErr = controller.client.ContainerCreate(ctx, containerConfig, hostConfig, networkConfig, nil, request.ContainerName)
+		if createdErr != nil {
+			return createdErr
 		}
-
-		//启动容器
-		if !request.OnlyCreate {
-			return controller.client.ContainerStart(ctx, containerInfo.ID, container.StartOptions{})
-		}
-		return nil
+		return controller.client.ContainerStart(ctx, containerInfo.ID, container.StartOptions{})
 	})
 
 	if err != nil {
-		if errdefs.IsConflict(err) {
-			return model.ObjectInternalErrorResult(model.ContainerCreateConflictErrorCode, model.ContainerCreateConflictErrorMsg)
-		}
-		return model.ObjectInternalErrorResult(model.ContainerCreateErrorCode, model.ContainerCreateErrorMsg)
+		return v1model.ObjectInternalErrorResult(v1model.ContainerCreateErrorCode, err.Error())
 	}
-	return model.ResultWithObject(containerInfo.ID)
+	return v1model.ResultWithObjectId(containerInfo.ID)
 }
 
-func (controller *ContainerController) Update(ctx context.Context, request *model.UpdateContainerRequest) *model.ObjectResult {
+func (controller *ContainerController) Update(ctx context.Context, request *v1model.UpdateContainerRequest) *v1model.ObjectResult {
 	return nil
 }
 
-func (controller *ContainerController) Delete(ctx context.Context, request *model.DeleteContainerRequest) *model.ObjectResult {
+func (controller *ContainerController) Delete(ctx context.Context, request *v1model.DeleteContainerRequest) *v1model.ObjectResult {
+	var containerId string
+	if err := controller.baseController.WithTimeout(ctx, func(ctx context.Context) error {
+		containerBody, inspectErr := controller.client.ContainerInspect(ctx, request.ContainerId)
+		if inspectErr != nil {
+			return inspectErr
+		}
+		containerId = containerBody.ID
+		return controller.client.ContainerRemove(ctx, request.ContainerId, container.RemoveOptions{Force: request.Force})
+	}); err != nil {
+		return v1model.ObjectInternalErrorResult(v1model.ContainerDeleteErrorCode, err.Error())
+	}
+	return v1model.ResultWithObjectId(containerId)
+}
+
+func (controller *ContainerController) Restart(ctx context.Context, request *v1model.RestartContainerRequest) *v1model.ObjectResult {
 	return nil
 }
 
-func (controller *ContainerController) Restart(ctx context.Context, request *model.RestartContainerRequest) *model.ObjectResult {
+func (controller *ContainerController) Start(ctx context.Context, request *v1model.StartContainerRequest) *v1model.ObjectResult {
 	return nil
 }
 
-func (controller *ContainerController) Start(ctx context.Context, request *model.StartContainerRequest) *model.ObjectResult {
-	return nil
-}
-
-func (controller *ContainerController) Stop(ctx context.Context, request *model.StopContainerRequest) *model.ObjectResult {
+func (controller *ContainerController) Stop(ctx context.Context, request *v1model.StopContainerRequest) *v1model.ObjectResult {
 	return nil
 }

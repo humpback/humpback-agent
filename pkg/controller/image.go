@@ -52,13 +52,13 @@ func (controller *ImageController) Pull(ctx context.Context, request *model.Pull
 
 	out, err := controller.client.ImagePull(context.Background(), request.Image, pullOptions)
 	if err != nil {
-		return model.ObjectNotFoundErrorResult(model.ImagePullErrorCode, model.ImagePullErrorMsg)
+		return model.ObjectNotFoundErrorResult(model.ImagePullErrorCode, err.Error())
 	}
 
 	defer out.Close()
 	imageInfo, _, err := controller.client.ImageInspectWithRaw(ctx, request.Image)
 	if err != nil {
-		return model.ObjectNotFoundErrorResult(model.ImagePullErrorCode, model.ImagePullErrorMsg)
+		return model.ObjectNotFoundErrorResult(model.ImagePullErrorCode, err.Error())
 	}
 	return model.ResultWithObject(imageInfo.ID)
 }

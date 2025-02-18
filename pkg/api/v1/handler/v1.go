@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"humpback-agent/pkg/api/factory"
@@ -18,9 +19,22 @@ func init() {
 	_ = factory.InjectHandler(APIVersion, NewV1Handler)
 }
 
+type V1TaskType int
+
+const (
+	ContainerCreateTask V1TaskType = 1
+	ContainerDeleteTask V1TaskType = 2
+)
+
+type V1Task struct {
+	TaskType V1TaskType
+	TaskBody any
+}
+
 type V1Handler struct {
 	factory.BaseHandler
 	apiVersion string
+	taskChan   chan *V1Task
 }
 
 func NewV1Handler(controller controller.ControllerInterface) factory.HandlerInterface {
@@ -28,6 +42,24 @@ func NewV1Handler(controller controller.ControllerInterface) factory.HandlerInte
 		BaseHandler: factory.BaseHandler{
 			ControllerInterface: controller,
 		},
+		taskChan: make(chan *V1Task),
+	}
+}
+
+func (handler *V1Handler) watchTasks() {
+	defer close(handler.taskChan)
+	for {
+		select {
+		case task := <-handler.taskChan:
+			switch task.TaskType {
+			case ContainerCreateTask:
+				container := handler.Container()
+				go container.Create(context.Background(), task.TaskBody.(*model.CreateContainerRequest))
+			case ContainerDeleteTask:
+				container := handler.Container()
+				go container.Delete(context.Background(), task.TaskBody.(*model.DeleteContainerRequest))
+			}
+		}
 	}
 }
 
@@ -76,6 +108,7 @@ func (handler *V1Handler) SetRouter(version string, engine *gin.Engine) {
 			networkRouter.DELETE(":networkId", handler.DeleteNetworkHandleFunc)
 		}
 	}
+	go handler.watchTasks()
 }
 
 func (handler *V1Handler) faqHandleFunc(c *gin.Context) {
