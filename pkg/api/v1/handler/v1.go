@@ -22,10 +22,13 @@ func init() {
 type V1TaskType int
 
 const (
-	ContainerCreateTask V1TaskType = 1
-	ContainerDeleteTask V1TaskType = 2
-	NetworkCreateTask   V1TaskType = 3
-	NetworkDeleteTask   V1TaskType = 4
+	ContainerCreateTask  V1TaskType = 1
+	ContainerDeleteTask  V1TaskType = 2
+	ContainerStartTask   V1TaskType = 3
+	ContainerStopTask    V1TaskType = 4
+	ContainerRestartTask V1TaskType = 5
+	NetworkCreateTask    V1TaskType = 6
+	NetworkDeleteTask    V1TaskType = 7
 )
 
 type V1Task struct {
@@ -60,6 +63,15 @@ func (handler *V1Handler) watchTasks() {
 			case ContainerDeleteTask:
 				container := handler.Container()
 				go container.Delete(context.Background(), task.TaskBody.(*model.DeleteContainerRequest))
+			case ContainerRestartTask:
+				container := handler.Container()
+				go container.Restart(context.Background(), task.TaskBody.(*model.RestartContainerRequest))
+			case ContainerStartTask:
+				container := handler.Container()
+				go container.Start(context.Background(), task.TaskBody.(*model.StartContainerRequest))
+			case ContainerStopTask:
+				container := handler.Container()
+				go container.Stop(context.Background(), task.TaskBody.(*model.StopContainerRequest))
 			case NetworkCreateTask:
 				network := handler.Network()
 				go network.Create(context.Background(), task.TaskBody.(*model.CreateNetworkRequest))
@@ -84,6 +96,9 @@ func (handler *V1Handler) SetRouter(version string, engine *gin.Engine) {
 			containerRouter.POST("", handler.CreateContainerHandleFunc)
 			containerRouter.PUT("", handler.UpdateContainerHandleFunc)
 			containerRouter.DELETE(":containerId", handler.DeleteContainerHandleFunc)
+			containerRouter.POST(":containerId/restart", handler.RestartContainerHandleFunc)
+			containerRouter.POST(":containerId/start", handler.StartContainerHandleFunc)
+			containerRouter.POST(":containerId/stop", handler.StopContainerHandleFunc)
 		}
 
 		//image router

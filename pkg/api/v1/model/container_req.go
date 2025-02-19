@@ -110,8 +110,50 @@ func BindDeleteContainerRequest(c *gin.Context) (*DeleteContainerRequest, *Error
 	}, nil
 }
 
-type StartContainerRequest struct{}
+type StartContainerRequest struct {
+	ContainerId string `json:"containerId"`
+}
 
-type StopContainerRequest struct{}
+func BindStartContainerRequest(c *gin.Context) (*StartContainerRequest, *ErrorResult) {
+	request := &StartContainerRequest{}
+	if err := c.ShouldBind(request); err != nil {
+		return nil, RequestErrorResult(RequestArgsErrorCode, RequestArgsErrorMsg)
+	}
 
-type RestartContainerRequest struct{}
+	if request.ContainerId == "" {
+		request.ContainerId = c.Param("containerId")
+	}
+	return request, nil
+}
+
+type StopContainerRequest struct {
+	ContainerId string `json:"containerId"`
+}
+
+func BindStopContainerRequest(c *gin.Context) (*StopContainerRequest, *ErrorResult) {
+	request := &StopContainerRequest{}
+	if err := c.ShouldBind(request); err != nil {
+		return nil, RequestErrorResult(RequestArgsErrorCode, RequestArgsErrorMsg)
+	}
+
+	if request.ContainerId == "" {
+		request.ContainerId = c.Param("containerId")
+	}
+	return request, nil
+}
+
+type RestartContainerRequest struct {
+	ContainerId string `json:"containerId"`
+}
+
+func BindRestartContainerRequest(c *gin.Context) (*RestartContainerRequest, *ErrorResult) {
+	request := &RestartContainerRequest{}
+	if err := c.ShouldBind(request); err != nil {
+		return nil, RequestErrorResult(RequestArgsErrorCode, RequestArgsErrorMsg)
+	}
+
+	if request.ContainerId == "" {
+		request.ContainerId = c.Param("containerId")
+	}
+	return request, nil
+}

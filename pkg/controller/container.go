@@ -190,13 +190,46 @@ func (controller *ContainerController) Delete(ctx context.Context, request *v1mo
 }
 
 func (controller *ContainerController) Restart(ctx context.Context, request *v1model.RestartContainerRequest) *v1model.ObjectResult {
-	return nil
+	var containerId string
+	if err := controller.baseController.WithTimeout(ctx, func(ctx context.Context) error {
+		containerBody, inspectErr := controller.client.ContainerInspect(ctx, request.ContainerId)
+		if inspectErr != nil {
+			return inspectErr
+		}
+		containerId = containerBody.ID
+		return controller.client.ContainerRestart(ctx, request.ContainerId, container.StopOptions{})
+	}); err != nil {
+		return v1model.ObjectInternalErrorResult(v1model.ContainerDeleteErrorCode, err.Error())
+	}
+	return v1model.ResultWithObjectId(containerId)
 }
 
 func (controller *ContainerController) Start(ctx context.Context, request *v1model.StartContainerRequest) *v1model.ObjectResult {
-	return nil
+	var containerId string
+	if err := controller.baseController.WithTimeout(ctx, func(ctx context.Context) error {
+		containerBody, inspectErr := controller.client.ContainerInspect(ctx, request.ContainerId)
+		if inspectErr != nil {
+			return inspectErr
+		}
+		containerId = containerBody.ID
+		return controller.client.ContainerStart(ctx, request.ContainerId, container.StartOptions{})
+	}); err != nil {
+		return v1model.ObjectInternalErrorResult(v1model.ContainerDeleteErrorCode, err.Error())
+	}
+	return v1model.ResultWithObjectId(containerId)
 }
 
 func (controller *ContainerController) Stop(ctx context.Context, request *v1model.StopContainerRequest) *v1model.ObjectResult {
-	return nil
+	var containerId string
+	if err := controller.baseController.WithTimeout(ctx, func(ctx context.Context) error {
+		containerBody, inspectErr := controller.client.ContainerInspect(ctx, request.ContainerId)
+		if inspectErr != nil {
+			return inspectErr
+		}
+		containerId = containerBody.ID
+		return controller.client.ContainerStop(ctx, request.ContainerId, container.StopOptions{})
+	}); err != nil {
+		return v1model.ObjectInternalErrorResult(v1model.ContainerDeleteErrorCode, err.Error())
+	}
+	return v1model.ResultWithObjectId(containerId)
 }

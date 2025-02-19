@@ -60,3 +60,36 @@ func (handler *V1Handler) DeleteContainerHandleFunc(c *gin.Context) {
 	handler.taskChan <- &V1Task{ContainerDeleteTask, request}
 	c.JSON(http.StatusAccepted, v1model.StdAcceptResult())
 }
+
+func (handler *V1Handler) RestartContainerHandleFunc(c *gin.Context) {
+	request, err := v1model.BindRestartContainerRequest(c)
+	if err != nil {
+		c.JSON(err.StatusCode, err)
+		return
+	}
+
+	handler.taskChan <- &V1Task{ContainerRestartTask, request}
+	c.JSON(http.StatusAccepted, v1model.StdAcceptResult())
+}
+
+func (handler *V1Handler) StartContainerHandleFunc(c *gin.Context) {
+	request, err := v1model.BindStartContainerRequest(c)
+	if err != nil {
+		c.JSON(err.StatusCode, err)
+		return
+	}
+
+	handler.taskChan <- &V1Task{ContainerStartTask, request}
+	c.JSON(http.StatusAccepted, v1model.StdAcceptResult())
+}
+
+func (handler *V1Handler) StopContainerHandleFunc(c *gin.Context) {
+	request, err := v1model.BindStopContainerRequest(c)
+	if err != nil {
+		c.JSON(err.StatusCode, err)
+		return
+	}
+
+	handler.taskChan <- &V1Task{ContainerStopTask, request}
+	c.JSON(http.StatusAccepted, v1model.StdAcceptResult())
+}
