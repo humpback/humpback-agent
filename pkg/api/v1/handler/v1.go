@@ -99,6 +99,7 @@ func (handler *V1Handler) SetRouter(version string, engine *gin.Engine) {
 			containerRouter.POST(":containerId/restart", handler.RestartContainerHandleFunc)
 			containerRouter.POST(":containerId/start", handler.StartContainerHandleFunc)
 			containerRouter.POST(":containerId/stop", handler.StopContainerHandleFunc)
+			containerRouter.GET(":containerId/logs", handler.GetContainerLogsHandleFunc)
 		}
 
 		//image router

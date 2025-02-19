@@ -164,3 +164,14 @@ func ParseContainerIPAddrWithNetworkSettings(networkSettings *types.NetworkSetti
 	}
 	return ipAddrs
 }
+
+type DockerLog struct {
+	Time   string `json:"time"`
+	Stream string `json:"stream"`
+	Log    string `json:"log"`
+}
+
+type DockerContainerLog struct {
+	ContainerId string      `json:"containerId"`
+	DockerLogs  []DockerLog `json:"containerLogs"`
+}

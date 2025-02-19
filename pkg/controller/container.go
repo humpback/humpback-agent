@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"encoding/binary"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
@@ -10,6 +11,8 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	v1model "humpback-agent/pkg/api/v1/model"
+	"humpback-agent/pkg/model"
+	"io"
 	"strconv"
 	"strings"
 )
@@ -24,6 +27,7 @@ type ContainerControllerInterface interface {
 	Start(ctx context.Context, request *v1model.StartContainerRequest) *v1model.ObjectResult
 	Restart(ctx context.Context, request *v1model.RestartContainerRequest) *v1model.ObjectResult
 	Stop(ctx context.Context, request *v1model.StopContainerRequest) *v1model.ObjectResult
+	Logs(ctx context.Context, request *v1model.GetContainerLogsRequest) *v1model.ObjectResult
 }
 
 type ContainerController struct {
@@ -232,4 +236,89 @@ func (controller *ContainerController) Stop(ctx context.Context, request *v1mode
 		return v1model.ObjectInternalErrorResult(v1model.ContainerDeleteErrorCode, err.Error())
 	}
 	return v1model.ResultWithObjectId(containerId)
+}
+
+func (controller *ContainerController) Logs(ctx context.Context, request *v1model.GetContainerLogsRequest) *v1model.ObjectResult {
+	options := container.LogsOptions{
+		ShowStdout: true, // 显示标准输出
+		ShowStderr: true, // 显示标准错误
+	}
+
+	if request.Follow != nil {
+		options.Follow = *request.Follow
+	}
+
+	if request.Tail != nil {
+		options.Tail = *request.Tail
+	}
+
+	if request.Since != nil {
+		options.Since = *request.Since
+	}
+
+	if request.Until != nil {
+		options.Until = *request.Until
+	}
+
+	if request.Timestamps != nil {
+		options.Timestamps = *request.Timestamps
+	}
+
+	if request.Details != nil {
+		options.Details = *request.Details
+	}
+
+	dockerLogs := model.DockerContainerLog{
+		DockerLogs: []model.DockerLog{},
+	}
+
+	if err := controller.baseController.WithTimeout(ctx, func(ctx context.Context) error {
+		containerBody, inspectErr := controller.client.ContainerInspect(ctx, request.ContainerId)
+		if inspectErr != nil {
+			return inspectErr
+		}
+
+		dockerLogs.ContainerId = containerBody.ID
+		//获取日志流
+		logReader, logsErr := controller.client.ContainerLogs(ctx, request.ContainerId, options)
+		if logsErr != nil {
+			return logsErr
+		}
+
+		defer logReader.Close()
+		hdr := make([]byte, 8)
+		for {
+			var docLog model.DockerLog
+			_, readErr := logReader.Read(hdr)
+			if readErr != nil {
+				if readErr == io.EOF {
+					return nil
+				}
+				return readErr
+			}
+
+			count := binary.BigEndian.Uint32(hdr[4:])
+			dat := make([]byte, count)
+			_, readErr = logReader.Read(dat)
+			if readErr != nil && readErr != io.EOF {
+				return readErr
+			}
+
+			time, log, found := strings.Cut(string(dat), " ")
+			if found {
+				docLog.Time = time
+				docLog.Log = log
+				switch hdr[0] {
+				case 1:
+					docLog.Stream = "Stdout"
+				default:
+					docLog.Stream = "Stderr"
+				}
+				dockerLogs.DockerLogs = append(dockerLogs.DockerLogs, docLog)
+			}
+		}
+	}); err != nil {
+		return v1model.ObjectInternalErrorResult(v1model.ContainerLogsErrorCode, err.Error())
+	}
+	return v1model.ResultWithObject(dockerLogs)
 }

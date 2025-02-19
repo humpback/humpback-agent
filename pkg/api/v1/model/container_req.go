@@ -157,3 +157,56 @@ func BindRestartContainerRequest(c *gin.Context) (*RestartContainerRequest, *Err
 	}
 	return request, nil
 }
+
+type GetContainerLogsRequest struct {
+	ContainerId string  `json:"containerId"`
+	Follow      *bool   `json:"follow"`     // 是否实时跟随日志
+	Tail        *string `json:"tail"`       // 日志行数（例如 "10" 或 "all"）
+	Since       *string `json:"since"`      // 从某个时间点开始的日志（例如 "2023-10-01T00:00:00Z"）
+	Until       *string `json:"until"`      // 到某个时间点结束的日志
+	Timestamps  *bool   `json:"timestamps"` // 是否显示时间戳
+	Details     *bool   `json:"details"`    // 是否显示详细信息
+}
+
+func BindGetContainerLogsRequest(c *gin.Context) (*GetContainerLogsRequest, *ErrorResult) {
+	request := &GetContainerLogsRequest{
+		ContainerId: c.Param("containerId"),
+	}
+
+	follow := c.Query("follow")
+	if follow != "" {
+		if value, err := strconv.ParseBool(follow); err == nil {
+			request.Follow = &value
+		}
+	}
+
+	tail := c.Query("tail")
+	if tail != "" {
+		request.Tail = &tail
+	}
+
+	since := c.Query("since")
+	if since != "" {
+		request.Since = &since
+	}
+
+	until := c.Query("until")
+	if until != "" {
+		request.Until = &until
+	}
+
+	timestamps := c.Query("timestamps")
+	if timestamps != "" {
+		if value, err := strconv.ParseBool(timestamps); err == nil {
+			request.Timestamps = &value
+		}
+	}
+
+	details := c.Query("details")
+	if details != "" {
+		if value, err := strconv.ParseBool(details); err == nil {
+			request.Details = &value
+		}
+	}
+	return request, nil
+}
