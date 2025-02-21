@@ -2,7 +2,7 @@ package docker
 
 import (
 	"github.com/docker/docker/client"
-	"humpback-agent/pkg/config"
+	"humpback-agent/config"
 )
 
 func BuildDockerClient(config *config.DockerConfig) (*client.Client, error) {

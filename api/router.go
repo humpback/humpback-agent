@@ -2,15 +2,15 @@ package api
 
 import (
 	"github.com/sirupsen/logrus"
-	"humpback-agent/pkg/api/factory"
-	"humpback-agent/pkg/config"
-	"humpback-agent/pkg/controller"
+	"humpback-agent/api/factory"
+	"humpback-agent/config"
+	"humpback-agent/controller"
 	"net/http"
 
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 
-	_ "humpback-agent/pkg/api/v1/handler"
+	_ "humpback-agent/api/v1/handler"
 )
 
 type IRouter interface {

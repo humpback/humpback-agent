@@ -3,7 +3,7 @@ package factory
 import (
 	"errors"
 	"github.com/gin-gonic/gin"
-	"humpback-agent/pkg/controller"
+	"humpback-agent/controller"
 	"strings"
 )
 

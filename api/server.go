@@ -3,8 +3,8 @@ package api
 import (
 	"context"
 	"github.com/sirupsen/logrus"
-	"humpback-agent/pkg/config"
-	"humpback-agent/pkg/controller"
+	"humpback-agent/config"
+	"humpback-agent/controller"
 	"net/http"
 	"time"
 )

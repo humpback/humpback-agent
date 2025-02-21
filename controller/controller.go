@@ -3,7 +3,7 @@ package controller
 import (
 	"context"
 	"github.com/docker/docker/client"
-	"humpback-agent/pkg/model"
+	"humpback-agent/model"
 	"time"
 )
 

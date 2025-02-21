@@ -6,12 +6,35 @@
   <component name="ChangeListManager">
     <list default="true" id="ac5b5e57-c5ec-4aab-99d4-72a63dae6b25" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pkg/api/v1/handler/container.go" beforeDir="false" afterPath="$PROJECT_DIR$/pkg/api/v1/handler/container.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pkg/api/v1/handler/v1.go" beforeDir="false" afterPath="$PROJECT_DIR$/pkg/api/v1/handler/v1.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pkg/api/v1/model/container_req.go" beforeDir="false" afterPath="$PROJECT_DIR$/pkg/api/v1/model/container_req.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pkg/api/v1/model/error_code.go" beforeDir="false" afterPath="$PROJECT_DIR$/pkg/api/v1/model/error_code.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pkg/controller/container.go" beforeDir="false" afterPath="$PROJECT_DIR$/pkg/controller/container.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pkg/model/container.go" beforeDir="false" afterPath="$PROJECT_DIR$/pkg/model/container.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/app.go" beforeDir="false" afterPath="$PROJECT_DIR$/app/app.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/go.sum" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/api/factory/base.go" beforeDir="false" afterPath="$PROJECT_DIR$/api/factory/base.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/api/middleware.go" beforeDir="false" afterPath="$PROJECT_DIR$/api/middleware.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/api/router.go" beforeDir="false" afterPath="$PROJECT_DIR$/api/router.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/api/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/api/server.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/api/v1/handler/container.go" beforeDir="false" afterPath="$PROJECT_DIR$/api/v1/handler/container.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/api/v1/handler/image.go" beforeDir="false" afterPath="$PROJECT_DIR$/api/v1/handler/image.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/api/v1/handler/network.go" beforeDir="false" afterPath="$PROJECT_DIR$/api/v1/handler/network.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/api/v1/handler/v1.go" beforeDir="false" afterPath="$PROJECT_DIR$/api/v1/handler/v1.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/api/v1/handler/volume.go" beforeDir="false" afterPath="$PROJECT_DIR$/api/v1/handler/volume.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/api/v1/model/container_req.go" beforeDir="false" afterPath="$PROJECT_DIR$/api/v1/model/container_req.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/api/v1/model/error_code.go" beforeDir="false" afterPath="$PROJECT_DIR$/api/v1/model/error_code.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/api/v1/model/image_req.go" beforeDir="false" afterPath="$PROJECT_DIR$/api/v1/model/image_req.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/api/v1/model/network_req.go" beforeDir="false" afterPath="$PROJECT_DIR$/api/v1/model/network_req.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/api/v1/model/options.go" beforeDir="false" afterPath="$PROJECT_DIR$/api/v1/model/options.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/api/v1/model/response.go" beforeDir="false" afterPath="$PROJECT_DIR$/api/v1/model/response.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/api/v1/model/types.go" beforeDir="false" afterPath="$PROJECT_DIR$/api/v1/model/types.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/config/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/config/config.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/config/parse_env.go" beforeDir="false" afterPath="$PROJECT_DIR$/config/parse_env.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/controller/container.go" beforeDir="false" afterPath="$PROJECT_DIR$/controller/container.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/controller/controller.go" beforeDir="false" afterPath="$PROJECT_DIR$/controller/controller.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/controller/image.go" beforeDir="false" afterPath="$PROJECT_DIR$/controller/image.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/controller/network.go" beforeDir="false" afterPath="$PROJECT_DIR$/controller/network.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/internal/docker/docker_cli.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/docker/docker_cli.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/model/container.go" beforeDir="false" afterPath="$PROJECT_DIR$/model/container.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/model/host.go" beforeDir="false" afterPath="$PROJECT_DIR$/model/host.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/service/agent.go" beforeDir="false" afterPath="$PROJECT_DIR$/service/agent.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -56,6 +79,11 @@
     &quot;settings.editor.selected.configurable&quot;: &quot;go.autoimport&quot;
   }
 }</component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$" />
+    </key>
+  </component>
   <component name="RunManager">
     <configuration name="go build humpback-agent" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
       <module name="humpback-agent" />

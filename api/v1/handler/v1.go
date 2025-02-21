@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"humpback-agent/pkg/api/factory"
-	"humpback-agent/pkg/api/v1/model"
-	"humpback-agent/pkg/controller"
+	"humpback-agent/api/factory"
+	v1model "humpback-agent/api/v1/model"
+	"humpback-agent/controller"
 	"net/http"
 	"time"
 )
@@ -59,25 +59,25 @@ func (handler *V1Handler) watchTasks() {
 			switch task.TaskType {
 			case ContainerCreateTask:
 				container := handler.Container()
-				go container.Create(context.Background(), task.TaskBody.(*model.CreateContainerRequest))
+				go container.Create(context.Background(), task.TaskBody.(*v1model.CreateContainerRequest))
 			case ContainerDeleteTask:
 				container := handler.Container()
-				go container.Delete(context.Background(), task.TaskBody.(*model.DeleteContainerRequest))
+				go container.Delete(context.Background(), task.TaskBody.(*v1model.DeleteContainerRequest))
 			case ContainerRestartTask:
 				container := handler.Container()
-				go container.Restart(context.Background(), task.TaskBody.(*model.RestartContainerRequest))
+				go container.Restart(context.Background(), task.TaskBody.(*v1model.RestartContainerRequest))
 			case ContainerStartTask:
 				container := handler.Container()
-				go container.Start(context.Background(), task.TaskBody.(*model.StartContainerRequest))
+				go container.Start(context.Background(), task.TaskBody.(*v1model.StartContainerRequest))
 			case ContainerStopTask:
 				container := handler.Container()
-				go container.Stop(context.Background(), task.TaskBody.(*model.StopContainerRequest))
+				go container.Stop(context.Background(), task.TaskBody.(*v1model.StopContainerRequest))
 			case NetworkCreateTask:
 				network := handler.Network()
-				go network.Create(context.Background(), task.TaskBody.(*model.CreateNetworkRequest))
+				go network.Create(context.Background(), task.TaskBody.(*v1model.CreateNetworkRequest))
 			case NetworkDeleteTask:
 				network := handler.Network()
-				go network.Delete(context.Background(), task.TaskBody.(*model.DeleteNetworkRequest))
+				go network.Delete(context.Background(), task.TaskBody.(*v1model.DeleteNetworkRequest))
 			}
 		}
 	}
@@ -136,7 +136,7 @@ func (handler *V1Handler) SetRouter(version string, engine *gin.Engine) {
 }
 
 func (handler *V1Handler) faqHandleFunc(c *gin.Context) {
-	c.JSON(http.StatusOK, &model.FAQResponse{
+	c.JSON(http.StatusOK, &v1model.FAQResponse{
 		APIVersion: handler.apiVersion,
 		Timestamp:  time.Now().UnixMilli(),
 	})

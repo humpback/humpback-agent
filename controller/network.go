@@ -5,7 +5,7 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/errdefs"
-	v1model "humpback-agent/pkg/api/v1/model"
+	v1model "humpback-agent/api/v1/model"
 )
 
 type NetworkControllerInterface interface {
