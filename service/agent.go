@@ -5,10 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/events"
-	"github.com/docker/docker/client"
-	"github.com/sirupsen/logrus"
 	"humpback-agent/api"
 	v1model "humpback-agent/api/v1/model"
 	"humpback-agent/config"
@@ -18,6 +14,11 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/events"
+	"github.com/docker/docker/client"
+	"github.com/sirupsen/logrus"
 )
 
 type AgentService struct {
@@ -201,7 +202,7 @@ func (agentService *AgentService) sendHealthRequest(ctx context.Context) error {
 	}
 
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusOK {
+	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("response status error %d", resp.StatusCode)
 	}
 	return nil
