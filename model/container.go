@@ -55,18 +55,19 @@ type ContainerIP struct {
 }
 
 type ContainerInfo struct {
-	ContainerId   string          `json:"containerId"`
-	ContainerName string          `json:"containerName"`
-	State         string          `json:"state"`
-	Status        string          `json:"status"`
-	Network       string          `json:"network"`
-	Image         string          `json:"image"`
-	Command       string          `json:"command"`
-	Ports         []ContainerPort `json:"ports"`
-	IPAddr        []ContainerIP   `json:"ipAddr"`
-	Created       int64           `json:"created"`
-	Started       int64           `json:"started"`
-	Finished      int64           `json:"finished"`
+	ContainerId   string            `json:"containerId"`
+	ContainerName string            `json:"containerName"`
+	State         string            `json:"state"`
+	Status        string            `json:"status"`
+	Network       string            `json:"network"`
+	Image         string            `json:"image"`
+	Labels        map[string]string `json:"-"`
+	Command       string            `json:"command"`
+	Ports         []ContainerPort   `json:"ports"`
+	IPAddr        []ContainerIP     `json:"ipAddr"`
+	Created       int64             `json:"created"`
+	Started       int64             `json:"started"`
+	Finished      int64             `json:"finished"`
 }
 
 func ParseContainerInfo(container types.ContainerJSON) *ContainerInfo {
@@ -107,6 +108,7 @@ func ParseContainerInfo(container types.ContainerJSON) *ContainerInfo {
 		State:         state,
 		Status:        status,
 		Image:         container.Config.Image,
+		Labels:        container.Config.Labels,
 		Network:       container.HostConfig.NetworkMode.NetworkName(),
 		Command:       ParseContainerCommandWithConfig(container.Path, container.Config),
 		Ports:         ParseContainerPortsWithPortMap(container.HostConfig.PortBindings),

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	v1model "humpback-agent/api/v1/model"
+	"humpback-agent/internal/schedule"
 	"humpback-agent/model"
 	"io"
 	"strconv"
@@ -94,6 +95,18 @@ func (controller *ContainerController) Create(ctx context.Context, request *v1mo
 		}
 	}
 
+	isJob := false
+	if request.ScheduleInfo != nil {
+		isJob = true
+		var jobRules string
+		if len(request.ScheduleInfo.Rules) > 0 {
+			jobRules = strings.Join(request.ScheduleInfo.Rules, ";")
+		}
+		request.Labels[schedule.HumpbackJobRulesLabel] = jobRules
+		request.Labels[schedule.HumpbackJobAlwaysPullLabel] = strconv.FormatBool(request.AlwaysPull)
+		request.Labels[schedule.HumpbackJobMaxTimeoutLabel] = request.ScheduleInfo.Timeout
+	}
+
 	containerConfig := &container.Config{
 		Image:  request.Image,
 		Env:    request.Envs,
@@ -106,9 +119,15 @@ func (controller *ContainerController) Create(ctx context.Context, request *v1mo
 
 	hostConfig := &container.HostConfig{}
 	if request.RestartPolicy != nil {
+		restartPolicyModeName := request.RestartPolicy.Mode
+		maxRetryCount := request.RestartPolicy.MaxRetryCount
+		if isJob { //定时任务强制设置为No
+			restartPolicyModeName = v1model.RestartPolicyModeNo
+			maxRetryCount = 0
+		}
 		hostConfig.RestartPolicy = container.RestartPolicy{
-			Name:              container.RestartPolicyMode(request.RestartPolicy.Mode),
-			MaximumRetryCount: request.RestartPolicy.MaxRetryCount,
+			Name:              container.RestartPolicyMode(restartPolicyModeName),
+			MaximumRetryCount: maxRetryCount,
 		}
 	}
 
@@ -166,7 +185,10 @@ func (controller *ContainerController) Create(ctx context.Context, request *v1mo
 		if createdErr != nil {
 			return createdErr
 		}
-		return controller.client.ContainerStart(ctx, containerInfo.ID, container.StartOptions{})
+		if !isJob { //Job容器创建后自动启动
+			return controller.client.ContainerStart(ctx, containerInfo.ID, container.StartOptions{})
+		}
+		return nil
 	})
 
 	if err != nil {

@@ -10,8 +10,11 @@ import (
 	"humpback-agent/config"
 	"humpback-agent/controller"
 	"humpback-agent/internal/docker"
+	"humpback-agent/internal/schedule"
 	"humpback-agent/model"
 	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -26,6 +29,7 @@ type AgentService struct {
 	config     *config.AppConfig
 	apiServer  *api.APIServer
 	httpClient *http.Client
+	scheduler  schedule.TaskSchedulerInterface
 	controller controller.ControllerInterface
 	containers map[string]*model.ContainerInfo
 }
@@ -51,6 +55,7 @@ func NewAgentService(ctx context.Context, config *config.AppConfig) (*AgentServi
 		httpClient: &http.Client{
 			Timeout: config.Health.Timeout,
 		},
+		scheduler:  schedule.NewJobScheduler(dockerClient), //构建任务定时调度器
 		controller: appController,
 		containers: make(map[string]*model.ContainerInfo),
 	}
@@ -69,6 +74,14 @@ func NewAgentService(ctx context.Context, config *config.AppConfig) (*AgentServi
 	go agentService.heartbeatLoop()
 	//启动docker事件监听
 	go agentService.watchDockerEvents(ctx, dockerClient)
+	//启动定时任务调度器
+	agentService.scheduler.Start()
+	//初始化一次所有定时容器, 加入调度器
+	for _, container := range agentService.containers {
+		if _, ret := container.Labels[schedule.HumpbackJobRulesLabel]; ret { //job定时容器, 交给定时调度器
+			agentService.addToScheduler(container.ContainerId, container.Image, container.Labels)
+		}
+	}
 	return agentService, nil
 }
 
@@ -78,6 +91,8 @@ func (agentService *AgentService) Shutdown(ctx context.Context) {
 			logrus.Errorf("Humpback Agent api server stop error, %s", err.Error())
 		}
 	}
+	//关闭定时任务调度器
+	agentService.scheduler.Stop()
 }
 
 func (agentService *AgentService) loadDockerContainers(ctx context.Context) error {
@@ -142,12 +157,20 @@ func (agentService *AgentService) handleDockerEvent(message events.Message) {
 				logrus.Errorf("Docker create container %s event, %v", message.Actor.ID, err)
 			}
 			if containerInfo != nil {
+				if message.Action == "create" {
+					if _, ret := containerInfo.Labels[schedule.HumpbackJobRulesLabel]; ret { //创建了一个job定时容器, 交给定时调度器
+						agentService.addToScheduler(containerInfo.ContainerId, containerInfo.Image, containerInfo.Labels)
+					}
+				}
 				agentService.Lock()
 				agentService.containers[containerInfo.ContainerId] = containerInfo
 				agentService.Unlock()
 				agentService.sendHealthRequest(context.Background())
 			}
 		case "destroy", "remove", "delete":
+			if message.Action == "destroy" { //从job定时调度器删除, 无论是否在调度器中, 会自动处理
+				agentService.removeFromScheduler(message.Actor.ID)
+			}
 			//修改容器状态
 			agentService.Lock()
 			if containerInfo, ret := agentService.containers[message.Actor.ID]; ret {
@@ -162,6 +185,34 @@ func (agentService *AgentService) handleDockerEvent(message events.Message) {
 			agentService.Unlock()
 		}
 	}
+}
+
+func (agentService *AgentService) addToScheduler(containerId string, containerImage string, containerLabels map[string]string) error {
+	if value, ret := containerLabels[schedule.HumpbackJobRulesLabel]; ret {
+		var (
+			err        error
+			timeout    time.Duration
+			alwaysPull bool
+		)
+		rules := strings.Split(value, ";")
+		if value, ret = containerLabels[schedule.HumpbackJobMaxTimeoutLabel]; ret {
+			if timeout, err = time.ParseDuration(value); err != nil {
+				return err
+			}
+		}
+
+		if value, ret = containerLabels[schedule.HumpbackJobAlwaysPullLabel]; ret {
+			if alwaysPull, err = strconv.ParseBool(value); err != nil {
+				return err
+			}
+		}
+		return agentService.scheduler.AddContainer(containerId, containerImage, alwaysPull, rules, timeout)
+	}
+	return nil
+}
+
+func (agentService *AgentService) removeFromScheduler(containerId string) error {
+	return agentService.scheduler.RemoveContainer(containerId)
 }
 
 func (agentService *AgentService) sendHealthRequest(ctx context.Context) error {
