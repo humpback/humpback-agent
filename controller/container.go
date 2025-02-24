@@ -102,6 +102,9 @@ func (controller *ContainerController) Create(ctx context.Context, request *v1mo
 		if len(request.ScheduleInfo.Rules) > 0 {
 			jobRules = strings.Join(request.ScheduleInfo.Rules, ";")
 		}
+		if request.Labels == nil {
+			request.Labels = make(map[string]string)
+		}
 		request.Labels[schedule.HumpbackJobRulesLabel] = jobRules
 		request.Labels[schedule.HumpbackJobAlwaysPullLabel] = strconv.FormatBool(request.AlwaysPull)
 		request.Labels[schedule.HumpbackJobMaxTimeoutLabel] = request.ScheduleInfo.Timeout

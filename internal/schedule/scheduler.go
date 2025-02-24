@@ -1,10 +1,11 @@
 package schedule
 
 import (
-	"github.com/docker/docker/client"
-	"github.com/robfig/cron/v3"
 	"sync"
 	"time"
+
+	"github.com/docker/docker/client"
+	"github.com/robfig/cron/v3"
 )
 
 const (

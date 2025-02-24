@@ -2,11 +2,13 @@ package schedule
 
 import (
 	"context"
+	"fmt"
+	"time"
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	"github.com/sirupsen/logrus"
-	"time"
 )
 
 type Task struct {
@@ -90,5 +92,9 @@ func (task *Task) waitForContainerExit(ctx context.Context, cli *client.Client, 
 
 func (task *Task) stopContainer(ctx context.Context, cli *client.Client, containerID string) error {
 	timeout := 5 // 停止容器的超时时间, sdk单位为秒
-	return cli.ContainerStop(ctx, containerID, container.StopOptions{Timeout: &timeout})
+	err := cli.ContainerStop(ctx, containerID, container.StopOptions{Timeout: &timeout})
+	if err != nil {
+		fmt.Printf("stop container [%s] failed: %s", containerID, err.Error())
+	}
+	return err
 }
