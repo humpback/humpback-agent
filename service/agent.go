@@ -190,6 +190,8 @@ func (agentService *AgentService) sendHealthRequest(ctx context.Context) error {
 		return err
 	}
 
+	// fmt.Println(string(data))
+
 	req, err := http.NewRequest("POST", fmt.Sprintf("%s/api/health", agentService.config.ServerConfig.Host), bytes.NewBuffer(data))
 	if err != nil {
 		return err

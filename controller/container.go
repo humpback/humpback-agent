@@ -3,6 +3,12 @@ package controller
 import (
 	"context"
 	"encoding/binary"
+	v1model "humpback-agent/api/v1/model"
+	"humpback-agent/model"
+	"io"
+	"strconv"
+	"strings"
+
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
@@ -10,11 +16,6 @@ import (
 	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
-	v1model "humpback-agent/api/v1/model"
-	"humpback-agent/model"
-	"io"
-	"strconv"
-	"strings"
 )
 
 type ContainerControllerInterface interface {
@@ -183,6 +184,7 @@ func (controller *ContainerController) Delete(ctx context.Context, request *v1mo
 	if err := controller.baseController.WithTimeout(ctx, func(ctx context.Context) error {
 		containerBody, inspectErr := controller.client.ContainerInspect(ctx, request.ContainerId)
 		if inspectErr != nil {
+
 			return inspectErr
 		}
 		containerId = containerBody.ID

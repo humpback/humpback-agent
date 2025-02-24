@@ -106,7 +106,7 @@ func ParseContainerInfo(container types.ContainerJSON) *ContainerInfo {
 		ContainerName: utils.ContainerName(container.Name),
 		State:         state,
 		Status:        status,
-		Image:         container.Image,
+		Image:         container.Config.Image,
 		Network:       container.HostConfig.NetworkMode.NetworkName(),
 		Command:       ParseContainerCommandWithConfig(container.Path, container.Config),
 		Ports:         ParseContainerPortsWithPortMap(container.HostConfig.PortBindings),
