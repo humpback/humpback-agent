@@ -2,7 +2,6 @@ package schedule
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -37,18 +36,18 @@ func (task *Task) Execute() {
 	defer cancel()
 
 	// 启动容器
-	if err := task.startContainer(ctx, task.client, task.ContainerId); err != nil {
+	if err := task.startContainer(ctx); err != nil {
 		logrus.Errorf("container %s task [%s] start container execute error, %v", task.ContainerId, task.Rule, err)
 		return
 	}
 
 	logrus.Infof("container %s task [%s] start succeed.", task.ContainerId, task.Rule)
 	select {
-	case <-task.waitForContainerExit(ctx, task.client, task.ContainerId): // 等待容器完成任务
+	case <-task.waitForContainerExit(ctx): // 等待容器完成任务
 		logrus.Infof("container %s task [%s] executed.", task.ContainerId, task.Rule)
 	case <-ctx.Done(): // 容器执行超时
 		logrus.Infof("container %s task [%s] executing timeout.", task.ContainerId, task.Rule)
-		task.stopContainer(ctx, task.client, task.ContainerId)
+		task.stopContainer()
 	}
 }
 
@@ -66,23 +65,23 @@ func (task *Task) pullImage() error {
 	return nil
 }
 
-func (task *Task) startContainer(ctx context.Context, cli *client.Client, imageName string) error {
+func (task *Task) startContainer(ctx context.Context) error {
 	if task.AlwaysPull {
 		if err := task.pullImage(); err != nil {
 			return err
 		}
 	}
-	return cli.ContainerStart(ctx, task.ContainerId, container.StartOptions{})
+	return task.client.ContainerStart(ctx, task.ContainerId, container.StartOptions{})
 }
 
-func (task *Task) waitForContainerExit(ctx context.Context, cli *client.Client, containerID string) <-chan struct{} {
+func (task *Task) waitForContainerExit(ctx context.Context) <-chan struct{} {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		statusCh, errCh := cli.ContainerWait(ctx, containerID, container.WaitConditionNotRunning)
+		statusCh, errCh := task.client.ContainerWait(ctx, task.ContainerId, container.WaitConditionNotRunning)
 		select {
 		case err := <-errCh:
-			logrus.Errorf("container %s task [%s] exit error: %v", containerID, task.Rule, err)
+			logrus.Errorf("container %s task [%s] exit error: %v", task.ContainerId, task.Rule, err)
 		case <-statusCh:
 			// 容器已退出
 		}
@@ -90,11 +89,15 @@ func (task *Task) waitForContainerExit(ctx context.Context, cli *client.Client, 
 	return done
 }
 
-func (task *Task) stopContainer(ctx context.Context, cli *client.Client, containerID string) error {
+func (task *Task) stopContainer() error {
 	timeout := 5 // 停止容器的超时时间, sdk单位为秒
-	err := cli.ContainerStop(ctx, containerID, container.StopOptions{Timeout: &timeout})
+	err := task.client.ContainerStop(context.Background(), task.ContainerId, container.StopOptions{
+		Signal:  "SIGKILL",
+		Timeout: &timeout,
+	})
+
 	if err != nil {
-		fmt.Printf("stop container [%s] failed: %s", containerID, err.Error())
+		logrus.Errorf("container %s task [%s] stop error: %s", task.ContainerId, task.Rule, err.Error())
 	}
 	return err
 }
