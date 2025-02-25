@@ -54,6 +54,11 @@ type ContainerIP struct {
 	IPAddress  string `json:"ipAddress"`
 }
 
+type MounteInfo struct {
+	Source      string `json:"Source"`
+	Destination string `json:"Destination"`
+}
+
 type ContainerInfo struct {
 	ContainerId   string            `json:"containerId"`
 	ContainerName string            `json:"containerName"`
@@ -61,7 +66,9 @@ type ContainerInfo struct {
 	Status        string            `json:"status"`
 	Network       string            `json:"network"`
 	Image         string            `json:"image"`
-	Labels        map[string]string `json:"-"`
+	Labels        map[string]string `json:"labels"`
+	Env           []string          `json:"Env"`
+	Mountes       []MounteInfo      `json:"Mounts"`
 	Command       string            `json:"command"`
 	Ports         []ContainerPort   `json:"ports"`
 	IPAddr        []ContainerIP     `json:"ipAddr"`
@@ -110,6 +117,8 @@ func ParseContainerInfo(container types.ContainerJSON) *ContainerInfo {
 		Image:         container.Config.Image,
 		Labels:        container.Config.Labels,
 		Network:       container.HostConfig.NetworkMode.NetworkName(),
+		Env:           container.Config.Env,
+		Mountes:       ParseContainerMountes(container.Mounts),
 		Command:       ParseContainerCommandWithConfig(container.Path, container.Config),
 		Ports:         ParseContainerPortsWithPortMap(container.HostConfig.PortBindings),
 		IPAddr:        ParseContainerIPAddrWithNetworkSettings(container.NetworkSettings),
@@ -166,6 +175,22 @@ func ParseContainerIPAddrWithNetworkSettings(networkSettings *types.NetworkSetti
 		}
 	}
 	return ipAddrs
+}
+
+func ParseContainerMountes(mps []types.MountPoint) []MounteInfo {
+	if mps == nil {
+		return nil
+	}
+
+	mountes := make([]MounteInfo, 0)
+	for _, mp := range mps {
+		m := MounteInfo{
+			Source:      mp.Source,
+			Destination: mp.Destination,
+		}
+		mountes = append(mountes, m)
+	}
+	return mountes
 }
 
 type DockerLog struct {
