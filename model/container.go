@@ -9,7 +9,6 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
 )
 
 const (
@@ -42,8 +41,8 @@ var stateMap = map[string]string{
 
 type ContainerPort struct {
 	BindIP      string `json:"bindIP"`
-	PrivatePort uint16 `json:"privatePort"`
-	PublicPort  uint16 `json:"publicPort"`
+	PrivatePort int    `json:"privatePort"`
+	PublicPort  int    `json:"publicPort"`
 	Type        string `json:"type"`
 }
 
@@ -67,8 +66,8 @@ type ContainerInfo struct {
 	Network       string            `json:"network"`
 	Image         string            `json:"image"`
 	Labels        map[string]string `json:"labels"`
-	Env           []string          `json:"Env"`
-	Mountes       []MounteInfo      `json:"Mounts"`
+	Env           []string          `json:"env"`
+	Mountes       []MounteInfo      `json:"mounts"`
 	Command       string            `json:"command"`
 	Ports         []ContainerPort   `json:"ports"`
 	IPAddr        []ContainerIP     `json:"ipAddr"`
@@ -120,7 +119,7 @@ func ParseContainerInfo(container types.ContainerJSON) *ContainerInfo {
 		Env:           container.Config.Env,
 		Mountes:       ParseContainerMountes(container.Mounts),
 		Command:       ParseContainerCommandWithConfig(container.Path, container.Config),
-		Ports:         ParseContainerPortsWithPortMap(container.HostConfig.PortBindings),
+		Ports:         ParseContainerPortsWithNetworkSettings(container.NetworkSettings),
 		IPAddr:        ParseContainerIPAddrWithNetworkSettings(container.NetworkSettings),
 		Created:       createdTimestamp,
 		Started:       startedTimestamp,
@@ -135,29 +134,27 @@ func ParseContainerCommandWithConfig(execPath string, containerConfig *container
 	return execPath
 }
 
-func ParseContainerPortsWithPortMap(portMap nat.PortMap) []ContainerPort {
+func ParseContainerPortsWithNetworkSettings(networkSettings *types.NetworkSettings) []ContainerPort {
 	ports := []ContainerPort{}
-	for containerVal, hostVal := range portMap {
-		bindIP := ""
-		privatePort := uint16(0)
-		if len(hostVal) > 0 {
-			bindIP = hostVal[0].HostIP
-			if hp, err := strconv.Atoi(hostVal[0].HostPort); err == nil {
-				privatePort = uint16(hp)
+	for containerPort, bindings := range networkSettings.Ports {
+
+		for _, binding := range bindings {
+			fmt.Printf("  Host IP: %s, Host Port: %s\n", binding.HostIP, binding.HostPort)
+
+			portInfo := ContainerPort{
+				BindIP: binding.HostIP,
+				Type:   containerPort.Proto(),
 			}
+
+			pport, _ := strconv.Atoi(containerPort.Port())
+			portInfo.PrivatePort = pport
+
+			hport, _ := strconv.Atoi(binding.HostPort)
+			portInfo.PublicPort = hport
+
+			ports = append(ports, portInfo)
 		}
 
-		publicPort := uint16(0)
-		if hp, err := strconv.Atoi(containerVal.Port()); err == nil {
-			publicPort = uint16(hp)
-		}
-
-		ports = append(ports, ContainerPort{
-			BindIP:      bindIP,
-			PublicPort:  publicPort,
-			PrivatePort: privatePort,
-			Type:        containerVal.Proto(),
-		})
 	}
 	return ports
 }
