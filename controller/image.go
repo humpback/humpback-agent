@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/errdefs"
 	v1model "humpback-agent/api/v1/model"
 )
 
@@ -33,7 +34,14 @@ func (controller *ImageController) BaseController() ControllerInterface {
 }
 
 func (controller *ImageController) Get(ctx context.Context, request *v1model.GetImageRequest) *v1model.ObjectResult {
-	return nil
+	imageInfo, _, err := controller.client.ImageInspectWithRaw(ctx, request.ImageId)
+	if err != nil {
+		if errdefs.IsNotFound(err) {
+			return v1model.ObjectNotFoundErrorResult(v1model.ImageNotFoundCode, err.Error())
+		}
+		return v1model.ObjectInternalErrorResult(v1model.ImagePullErrorCode, err.Error())
+	}
+	return v1model.ResultWithObject(imageInfo)
 }
 
 func (controller *ImageController) List(ctx context.Context, request *v1model.QueryImageRequest) *v1model.ObjectResult {
@@ -58,7 +66,7 @@ func (controller *ImageController) Pull(ctx context.Context, request *v1model.Pu
 	defer out.Close()
 	imageInfo, _, err := controller.client.ImageInspectWithRaw(ctx, request.Image)
 	if err != nil {
-		return v1model.ObjectNotFoundErrorResult(v1model.ImagePullErrorCode, err.Error())
+		return v1model.ObjectInternalErrorResult(v1model.ImagePullErrorCode, err.Error())
 	}
 	return v1model.ResultWithObject(imageInfo.ID)
 }

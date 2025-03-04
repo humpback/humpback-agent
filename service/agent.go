@@ -79,7 +79,7 @@ func NewAgentService(ctx context.Context, config *config.AppConfig) (*AgentServi
 	//初始化一次所有定时容器, 加入调度器
 	for _, container := range agentService.containers {
 		if _, ret := container.Labels[schedule.HumpbackJobRulesLabel]; ret { //job定时容器, 交给定时调度器
-			agentService.addToScheduler(container.ContainerId, container.Image, container.Labels)
+			agentService.addToScheduler(container.ContainerId, container.ContainerName, container.Image, container.Labels)
 		}
 	}
 	return agentService, nil
@@ -127,7 +127,6 @@ func (agentService *AgentService) heartbeatLoop() {
 	for {
 		if err := agentService.sendHealthRequest(context.Background()); err != nil {
 			logrus.Errorf("heartbeat health send request error: %+v", err.Error())
-
 		} else {
 			logrus.Debugf("heartbeat health send request done at %s\n", time.Now().String())
 		}
@@ -159,7 +158,16 @@ func (agentService *AgentService) handleDockerEvent(message events.Message) {
 			if containerInfo != nil {
 				if message.Action == "create" {
 					if _, ret := containerInfo.Labels[schedule.HumpbackJobRulesLabel]; ret { //创建了一个job定时容器, 交给定时调度器
-						agentService.addToScheduler(containerInfo.ContainerId, containerInfo.Image, containerInfo.Labels)
+						agentService.addToScheduler(containerInfo.ContainerId, containerInfo.ContainerName, containerInfo.Image, containerInfo.Labels)
+						//找到相同name的删除, 因为reCreate原因, 缓存先同步删除
+						agentService.Lock()
+						for containerId, container := range agentService.containers {
+							if container.ContainerName == containerInfo.ContainerName {
+								delete(agentService.containers, containerId)
+								break
+							}
+						}
+						agentService.Unlock()
 					}
 				}
 				agentService.Lock()
@@ -187,7 +195,7 @@ func (agentService *AgentService) handleDockerEvent(message events.Message) {
 	}
 }
 
-func (agentService *AgentService) addToScheduler(containerId string, containerImage string, containerLabels map[string]string) error {
+func (agentService *AgentService) addToScheduler(containerId string, containerName string, containerImage string, containerLabels map[string]string) error {
 	if value, ret := containerLabels[schedule.HumpbackJobRulesLabel]; ret {
 		var (
 			err        error
@@ -206,7 +214,7 @@ func (agentService *AgentService) addToScheduler(containerId string, containerIm
 				return err
 			}
 		}
-		return agentService.scheduler.AddContainer(containerId, containerImage, alwaysPull, rules, timeout)
+		return agentService.scheduler.AddContainer(containerId, containerName, containerImage, alwaysPull, rules, timeout)
 	}
 	return nil
 }

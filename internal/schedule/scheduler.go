@@ -1,6 +1,7 @@
 package schedule
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -14,10 +15,14 @@ const (
 	HumpbackJobMaxTimeoutLabel = "HUMPBACK_JOB_MAX_TIMEOUT"
 )
 
+const (
+	MaxKillContainerTimeoutSeconds = 5
+)
+
 type TaskSchedulerInterface interface {
 	Start()
 	Stop()
-	AddContainer(containerId string, image string, alwaysPull bool, rules []string, timeout time.Duration) error
+	AddContainer(containerId string, name string, image string, alwaysPull bool, rules []string, timeout time.Duration) error
 	RemoveContainer(containerId string) error
 }
 
@@ -44,11 +49,18 @@ func (scheduler *TaskScheduler) Stop() {
 	scheduler.c.Stop()
 }
 
-func (scheduler *TaskScheduler) AddContainer(containerId string, image string, alwaysPull bool, rules []string, timeout time.Duration) error {
+func (scheduler *TaskScheduler) AddContainer(containerId string, name string, image string, alwaysPull bool, rules []string, timeout time.Duration) error {
 	scheduler.Lock()
 	defer scheduler.Unlock()
+	//同名的容器不能反复进入调度器, 因为可能是dockerEvent捕获到了task内部因AlwaysPull导致的容器替换reCreate
+	for _, task := range scheduler.tasks {
+		if task.Name == name {
+			return fmt.Errorf("container %s already exists in scheduler", containerId)
+		}
+	}
+
 	for _, rule := range rules {
-		task := NewTask(containerId, image, alwaysPull, timeout, rule, scheduler.client)
+		task := NewTask(containerId, name, image, alwaysPull, timeout, rule, scheduler.client)
 		entryId, err := scheduler.c.AddFunc(rule, func() {
 			task.Execute() //根据rule定时执行这个任务
 		})

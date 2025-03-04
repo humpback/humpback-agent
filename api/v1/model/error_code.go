@@ -11,7 +11,9 @@ const (
 	ContainerCreateErrorCode = "CNT10001"
 	ContainerDeleteErrorCode = "CNT10002"
 	ContainerLogsErrorCode   = "CNT10003"
+	ContainerGetErrorCode    = "CNT10004"
 	//Image error codes
+	ImageNotFoundCode  = "IMG10000"
 	ImagePullErrorCode = "IMG10001"
 	//Network error codes
 	NetworkNotFoundCode    = "NET10000"

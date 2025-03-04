@@ -1,6 +1,9 @@
 package model
 
-type GetImageRequest struct{}
+type GetImageRequest struct {
+	ImageId string `json:"imageId"`
+}
+
 type QueryImageRequest struct{}
 type PushImageRequest struct{}
 type PullImageRequest struct {

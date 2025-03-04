@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"encoding/binary"
+	"github.com/docker/docker/errdefs"
 	v1model "humpback-agent/api/v1/model"
 	"humpback-agent/internal/schedule"
 	"humpback-agent/model"
@@ -57,7 +58,10 @@ func (controller *ContainerController) Get(ctx context.Context, request *v1model
 	})
 
 	if err != nil {
-		return v1model.ObjectInternalErrorResult(v1model.ServerInternalErrorCode, err.Error())
+		if errdefs.IsNotFound(err) {
+			return v1model.ObjectNotFoundErrorResult(v1model.ContainerNotFoundCode, err.Error())
+		}
+		return v1model.ObjectInternalErrorResult(v1model.ContainerGetErrorCode, err.Error())
 	}
 	return v1model.ResultWithObject(containerBody)
 }
@@ -89,12 +93,6 @@ func (controller *ContainerController) List(ctx context.Context, request *v1mode
 }
 
 func (controller *ContainerController) Create(ctx context.Context, request *v1model.CreateContainerRequest) *v1model.ObjectResult {
-	if request.AlwaysPull { //拉取镜像（如果需要）
-		if ret := controller.BaseController().Image().Pull(ctx, &v1model.PullImageRequest{Image: request.Image}); ret.Error != nil {
-			return ret
-		}
-	}
-
 	isJob := false
 	if request.ScheduleInfo != nil {
 		isJob = true

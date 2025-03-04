@@ -139,7 +139,7 @@ func ParseContainerPortsWithNetworkSettings(networkSettings *types.NetworkSettin
 	for containerPort, bindings := range networkSettings.Ports {
 
 		for _, binding := range bindings {
-			fmt.Printf("  Host IP: %s, Host Port: %s\n", binding.HostIP, binding.HostPort)
+			//fmt.Printf("  Host IP: %s, Host Port: %s\n", binding.HostIP, binding.HostPort)
 
 			portInfo := ContainerPort{
 				BindIP: binding.HostIP,
