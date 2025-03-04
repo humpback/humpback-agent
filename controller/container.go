@@ -141,6 +141,19 @@ func (controller *ContainerController) Create(ctx context.Context, request *v1mo
 		}
 	}
 
+	if request.Resources != nil {
+		hostConfig.Resources = container.Resources{}
+		if request.Resources.Memory > 0 {
+			hostConfig.Resources.Memory = int64(request.Resources.Memory)
+		}
+		if request.Resources.MemoryReservation > 0 {
+			hostConfig.Resources.MemoryReservation = int64(request.Resources.MemoryReservation)
+		}
+		if request.Resources.MaxCpuUsage > 0 {
+			hostConfig.Resources.NanoCPUs = int64(request.Resources.MaxCpuUsage)
+		}
+	}
+
 	if request.RestartPolicy != nil {
 		restartPolicyModeName := request.RestartPolicy.Mode
 		maxRetryCount := request.RestartPolicy.MaxRetryCount

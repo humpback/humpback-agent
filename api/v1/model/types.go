@@ -45,6 +45,12 @@ type Capabilities struct {
 	CapDrop *[]string `json:"capDrop"`
 }
 
+type Resources struct {
+	Memory            uint64 `json:"memory"`
+	MemoryReservation uint64 `json:"memoryReservation"`
+	MaxCpuUsage       uint64 `json:"maxCpuUsage"`
+}
+
 type LogConfig struct {
 	Type   string            `json:"type"`
 	Config map[string]string `json:"config"`
@@ -60,5 +66,6 @@ type ContainerMeta struct {
 	RestartPolicy *RestartPolicy    `json:"restartPolicy"`
 	Capabilities  *Capabilities     `json:"capabilities"`
 	LogConfig     *LogConfig        `json:"logConfig"`
+	Resources     *Resources        `json:"resources"`
 	Privileged    bool              `json:"privileged"`
 }
