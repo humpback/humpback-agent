@@ -40,6 +40,11 @@ type ScheduleInfo struct {
 	Rules   []string `json:"rules"`
 }
 
+type Capabilities struct {
+	CapAdd  *[]string `json:"capAdd"`
+	CapDrop *[]string `json:"capDrop"`
+}
+
 type ContainerMeta struct {
 	Image         string            `json:"image"`
 	AlwaysPull    bool              `json:"alwaysPull"`
@@ -48,4 +53,6 @@ type ContainerMeta struct {
 	Labels        map[string]string `json:"labels"`
 	Network       *NetworkInfo      `json:"network"`
 	RestartPolicy *RestartPolicy    `json:"restartPolicy"`
+	Capabilities  *Capabilities     `json:"capabilities"`
+	Privileged    bool              `json:"privileged"`
 }

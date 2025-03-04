@@ -6,14 +6,8 @@
   <component name="ChangeListManager">
     <list default="true" id="ac5b5e57-c5ec-4aab-99d4-72a63dae6b25" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/api/v1/model/error_code.go" beforeDir="false" afterPath="$PROJECT_DIR$/api/v1/model/error_code.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/api/v1/model/image_req.go" beforeDir="false" afterPath="$PROJECT_DIR$/api/v1/model/image_req.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/api/v1/model/types.go" beforeDir="false" afterPath="$PROJECT_DIR$/api/v1/model/types.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/controller/container.go" beforeDir="false" afterPath="$PROJECT_DIR$/controller/container.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controller/image.go" beforeDir="false" afterPath="$PROJECT_DIR$/controller/image.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/schedule/scheduler.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/schedule/scheduler.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/schedule/task.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/schedule/task.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/model/container.go" beforeDir="false" afterPath="$PROJECT_DIR$/model/container.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/service/agent.go" beforeDir="false" afterPath="$PROJECT_DIR$/service/agent.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

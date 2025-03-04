@@ -118,7 +118,22 @@ func (controller *ContainerController) Create(ctx context.Context, request *v1mo
 		containerConfig.Cmd = strslice.StrSlice{request.Command}
 	}
 
-	hostConfig := &container.HostConfig{}
+	hostConfig := &container.HostConfig{
+		Privileged: request.Privileged,
+	}
+
+	if request.Capabilities != nil {
+		capAdd := *request.Capabilities.CapAdd
+		if capAdd != nil && len(capAdd) > 0 {
+			hostConfig.CapAdd = capAdd
+		}
+
+		capDrop := *request.Capabilities.CapDrop
+		if capDrop != nil && len(capDrop) > 0 {
+			hostConfig.CapDrop = capDrop
+		}
+	}
+
 	if request.RestartPolicy != nil {
 		restartPolicyModeName := request.RestartPolicy.Mode
 		maxRetryCount := request.RestartPolicy.MaxRetryCount
