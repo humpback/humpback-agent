@@ -134,6 +134,13 @@ func (controller *ContainerController) Create(ctx context.Context, request *v1mo
 		}
 	}
 
+	if request.LogConfig != nil {
+		hostConfig.LogConfig = container.LogConfig{
+			Type:   request.LogConfig.Type,
+			Config: request.LogConfig.Config,
+		}
+	}
+
 	if request.RestartPolicy != nil {
 		restartPolicyModeName := request.RestartPolicy.Mode
 		maxRetryCount := request.RestartPolicy.MaxRetryCount

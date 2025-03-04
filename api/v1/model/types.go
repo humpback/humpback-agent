@@ -45,6 +45,11 @@ type Capabilities struct {
 	CapDrop *[]string `json:"capDrop"`
 }
 
+type LogConfig struct {
+	Type   string            `json:"type"`
+	Config map[string]string `json:"config"`
+}
+
 type ContainerMeta struct {
 	Image         string            `json:"image"`
 	AlwaysPull    bool              `json:"alwaysPull"`
@@ -54,5 +59,6 @@ type ContainerMeta struct {
 	Network       *NetworkInfo      `json:"network"`
 	RestartPolicy *RestartPolicy    `json:"restartPolicy"`
 	Capabilities  *Capabilities     `json:"capabilities"`
+	LogConfig     *LogConfig        `json:"logConfig"`
 	Privileged    bool              `json:"privileged"`
 }
