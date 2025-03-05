@@ -47,6 +47,17 @@ func (handler *V1Handler) GetContainerLogsHandleFunc(c *gin.Context) {
 	c.JSON(http.StatusOK, result.Object)
 }
 
+func (handler *V1Handler) GetContainerStatsHandleFunc(c *gin.Context) {
+	request, err := v1model.BindGetContainerStatsRequest(c)
+	if err != nil {
+		c.JSON(err.StatusCode, err)
+		return
+	}
+
+	result := handler.Container().Stats(c.Request.Context(), request)
+	c.JSON(http.StatusOK, result.Object)
+}
+
 func (handler *V1Handler) CreateContainerHandleFunc(c *gin.Context) {
 	request, err := v1model.BindCreateContainerRequest(c)
 	if err != nil {

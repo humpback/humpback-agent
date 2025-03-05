@@ -210,3 +210,14 @@ func BindGetContainerLogsRequest(c *gin.Context) (*GetContainerLogsRequest, *Err
 	}
 	return request, nil
 }
+
+type GetContainerStatsRequest struct {
+	ContainerId string `json:"containerId"`
+}
+
+func BindGetContainerStatsRequest(c *gin.Context) (*GetContainerStatsRequest, *ErrorResult) {
+	request := &GetContainerStatsRequest{
+		ContainerId: c.Param("containerId"),
+	}
+	return request, nil
+}

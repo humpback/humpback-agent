@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"github.com/docker/docker/errdefs"
 	v1model "humpback-agent/api/v1/model"
 	"humpback-agent/internal/schedule"
@@ -31,6 +32,7 @@ type ContainerControllerInterface interface {
 	Restart(ctx context.Context, request *v1model.RestartContainerRequest) *v1model.ObjectResult
 	Stop(ctx context.Context, request *v1model.StopContainerRequest) *v1model.ObjectResult
 	Logs(ctx context.Context, request *v1model.GetContainerLogsRequest) *v1model.ObjectResult
+	Stats(ctx context.Context, request *v1model.GetContainerStatsRequest) *v1model.ObjectResult
 }
 
 type ContainerController struct {
@@ -381,4 +383,19 @@ func (controller *ContainerController) Logs(ctx context.Context, request *v1mode
 		return v1model.ObjectInternalErrorResult(v1model.ContainerLogsErrorCode, err.Error())
 	}
 	return v1model.ResultWithObject(dockerLogs)
+}
+
+func (controller *ContainerController) Stats(ctx context.Context, request *v1model.GetContainerStatsRequest) *v1model.ObjectResult {
+	containerStats := container.StatsResponse{}
+	if err := controller.baseController.WithTimeout(ctx, func(ctx context.Context) error {
+		statsReader, statsErr := controller.client.ContainerStats(ctx, request.ContainerId, true)
+		if statsErr != nil {
+			return statsErr
+		}
+		defer statsReader.Body.Close()
+		return json.NewDecoder(statsReader.Body).Decode(&containerStats)
+	}); err != nil {
+		return v1model.ObjectInternalErrorResult(v1model.ContainerLogsErrorCode, err.Error())
+	}
+	return v1model.ResultWithObject(model.ParseContainerStats(&containerStats))
 }

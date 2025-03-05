@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"humpback-agent/pkg/utils"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -199,4 +200,80 @@ type DockerLog struct {
 type DockerContainerLog struct {
 	ContainerId string      `json:"containerId"`
 	DockerLogs  []DockerLog `json:"containerLogs"`
+}
+
+type ContainerNetwork struct {
+	Name    string `json:"name"`
+	RxBytes uint64 `json:"rxBytes"`
+	TxBytes uint64 `json:"txBytes"`
+}
+
+type ContainerStats struct {
+	CPUPercent       float64            `json:"cpuPercent"`
+	MemoryUsageBytes uint64             `json:"memoryUsageBytes"`
+	MemoryLimitBytes uint64             `json:"memoryLimitBytes"`
+	DiskReadBytes    uint64             `json:"diskReadBytes"`
+	DiskWriteBytes   uint64             `json:"diskWriteBytes"`
+	Networks         []ContainerNetwork `json:"networks"`
+	StatsTime        string             `json:"statsTime"`
+}
+
+func ParseContainerStats(containerStats *container.StatsResponse) *ContainerStats {
+	stats := ContainerStats{}
+	if containerStats != nil {
+		stats.CPUPercent = calculateCPUPercent(containerStats)
+		stats.MemoryUsageBytes = containerStats.MemoryStats.Usage
+		stats.MemoryLimitBytes = containerStats.MemoryStats.Limit
+		stats.Networks = calculateNetworkIO(containerStats)
+		stats.DiskReadBytes, stats.DiskWriteBytes = calculateDiskIO(containerStats)
+		stats.StatsTime = time.Now().Format(time.RFC3339Nano) //containerStats.Read.Format(time.RFC3339Nano)
+	}
+	return &stats
+}
+
+// 计算容器 CPU 使用率
+func calculateCPUPercent(stats *container.StatsResponse) float64 {
+	cpuDelta := float64(stats.CPUStats.CPUUsage.TotalUsage) - float64(stats.PreCPUStats.CPUUsage.TotalUsage)
+	systemDelta := float64(stats.CPUStats.SystemUsage) - float64(stats.PreCPUStats.SystemUsage)
+	// 获取 CPU 核心数
+	cpuCount := float64(stats.CPUStats.OnlineCPUs)
+	if cpuCount == 0 {
+		//如果 OnlineCPUs 为 0，使用PercpuUsage的长度作为备选
+		cpuCount = float64(len(stats.CPUStats.CPUUsage.PercpuUsage))
+		if cpuCount == 0 {
+			// 如果仍然为 0，默认设置为 1（避免除零错误）
+			cpuCount = 1.0
+		}
+	}
+	// CPU 使用率 = (容器 CPU 使用时间增量 / 系统 CPU 时间增量) * CPU 核心数 * 100
+	cpuPercent := (cpuDelta / systemDelta) * cpuCount * 100.0
+	//cpuPercent := (cpuDelta / systemDelta) * float64(len(stats.CPUStats.CPUUsage.PercpuUsage)) * 100.0
+	return math.Round(cpuPercent*100) / 100 //保留两位小数
+}
+
+// 计算容器网络 I/O
+func calculateNetworkIO(stats *container.StatsResponse) []ContainerNetwork {
+	networks := []ContainerNetwork{}
+	for name, network := range stats.Networks {
+		networks = append(networks, ContainerNetwork{
+			Name:    name,
+			RxBytes: network.RxBytes,
+			TxBytes: network.TxBytes,
+		})
+	}
+	return networks
+}
+
+func calculateDiskIO(stats *container.StatsResponse) (uint64, uint64) {
+	var diskReadBytes, diskWriteBytes uint64
+	if len(stats.BlkioStats.IoServiceBytesRecursive) > 0 {
+		for _, bytesIO := range stats.BlkioStats.IoServiceBytesRecursive {
+			if bytesIO.Op == "read" {
+				diskReadBytes = bytesIO.Value
+			} else if bytesIO.Op == "write" {
+				diskWriteBytes = bytesIO.Value
+			}
+		}
+	}
+	return diskReadBytes, diskWriteBytes
 }
