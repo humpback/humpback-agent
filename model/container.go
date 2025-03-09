@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"humpback-agent/pkg/utils"
+	"log/slog"
 	"math"
 	"strconv"
 	"strings"
@@ -35,6 +36,7 @@ var stateMap = map[string]string{
 	"stopped":   ContainerStatusExited,
 	"destroy":   ContainerStatusRemoved,
 	"remove":    ContainerStatusRemoved,
+	"removing":  ContainerStatusRemoved,
 	"delete":    ContainerStatusRemoved,
 	"pending":   ContainerStatusPending,
 	"warning":   ContainerStatusWarning,
@@ -109,6 +111,9 @@ func ParseContainerInfo(container types.ContainerJSON) *ContainerInfo {
 	}
 
 	state = stateMap[container.State.Status]
+	if state == "" {
+		slog.Info("unknow container status", "status", container.State.Status)
+	}
 	return &ContainerInfo{
 		ContainerId:   container.ID,
 		ContainerName: utils.ContainerName(container.Name),
