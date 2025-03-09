@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
-	"github.com/docker/docker/errdefs"
 	v1model "humpback-agent/api/v1/model"
 	"humpback-agent/internal/schedule"
 	"humpback-agent/model"
 	"io"
 	"strconv"
 	"strings"
+
+	"github.com/docker/docker/errdefs"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -102,7 +103,7 @@ func (controller *ContainerController) Create(ctx context.Context, request *v1mo
 	}
 
 	isJob := false
-	if request.ScheduleInfo != nil {
+	if len(request.ScheduleInfo.Rules) > 0 {
 		isJob = true
 		var jobRules string
 		if len(request.ScheduleInfo.Rules) > 0 {
