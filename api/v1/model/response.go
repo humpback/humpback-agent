@@ -1,6 +1,7 @@
 package model
 
 import (
+	"log/slog"
 	"net/http"
 )
 
@@ -111,6 +112,7 @@ func ObjectNotFoundErrorResult(code string, errMsg string) *ObjectResult {
 }
 
 func ObjectInternalErrorResult(code string, errMsg string) *ObjectResult {
+	slog.Error("internal error: ", "code", code, "msg", errMsg)
 	return &ObjectResult{
 		Error: InternalErrorResult(code, errMsg),
 	}
