@@ -2,14 +2,15 @@ package utils
 
 import (
 	"fmt"
-	"github.com/shirou/gopsutil/v4/cpu"
-	"github.com/shirou/gopsutil/v4/mem"
-	"golang.org/x/sys/unix"
 	"math"
 	"net"
 	"runtime"
 	"strconv"
 	"strings"
+
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/mem"
+	"golang.org/x/sys/unix"
 )
 
 func HostCPU() (int, float32, float32) {
