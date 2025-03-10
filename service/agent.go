@@ -182,7 +182,7 @@ func (agentService *AgentService) handleDockerEvent(message events.Message) {
 				agentService.Unlock()
 
 				if needReport {
-					slog.Info("send heartbeat", "container", message.Actor.ID, "action", message.Action, "status", containerInfo.State)
+					slog.Info("send heartbeat", "container", containerInfo.ContainerName, "action", message.Action, "status", containerInfo.State)
 					agentService.sendHealthRequest(context.Background())
 				}
 			}
@@ -248,6 +248,7 @@ func (agentService *AgentService) sendHealthRequest(ctx context.Context) error {
 	containers := []*model.ContainerInfo{}
 	agentService.RLock()
 	for _, containerInfo := range agentService.containers {
+
 		containers = append(containers, containerInfo)
 	}
 	agentService.RUnlock()
