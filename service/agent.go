@@ -12,6 +12,7 @@ import (
 	"humpback-agent/internal/docker"
 	"humpback-agent/internal/schedule"
 	"humpback-agent/model"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -170,22 +171,35 @@ func (agentService *AgentService) handleDockerEvent(message events.Message) {
 						agentService.Unlock()
 					}
 				}
+
+				needReport := true
 				agentService.Lock()
+				old, ok := agentService.containers[containerInfo.ContainerId]
+				if ok && old.State == containerInfo.State {
+					needReport = false
+				}
 				agentService.containers[containerInfo.ContainerId] = containerInfo
 				agentService.Unlock()
-				agentService.sendHealthRequest(context.Background())
+
+				if needReport {
+					slog.Info("send heartbeat", "container", message.Actor.ID, "action", message.Action, "status", containerInfo.State)
+					agentService.sendHealthRequest(context.Background())
+				}
 			}
 		case "destroy", "remove", "delete":
 			if message.Action == "destroy" { //从job定时调度器删除, 无论是否在调度器中, 会自动处理
 				agentService.removeFromScheduler(message.Actor.ID)
 			}
+			state := "unknow"
 			//修改容器状态
 			agentService.Lock()
 			if containerInfo, ret := agentService.containers[message.Actor.ID]; ret {
 				containerInfo.State = model.ContainerStatusRemoved
+				state = model.ContainerStatusRemoved
 			}
 			agentService.Unlock()
 			//主动通知一次心跳
+			slog.Info("send heartbeat", "container", message.Actor.ID, "action", message.Action, "status", state)
 			agentService.sendHealthRequest(context.Background())
 			//缓存删除容器
 			agentService.Lock()
