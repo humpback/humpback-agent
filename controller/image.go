@@ -8,7 +8,12 @@ import (
 	v1model "humpback-agent/api/v1/model"
 )
 
+type ImageInternalControllerInterface interface {
+	AttemptPull(ctx context.Context, imageId string, alwaysPull bool) *v1model.ObjectResult
+}
+
 type ImageControllerInterface interface {
+	ImageInternalControllerInterface
 	BaseController() ControllerInterface
 	Get(ctx context.Context, request *v1model.GetImageRequest) *v1model.ObjectResult
 	List(ctx context.Context, request *v1model.QueryImageRequest) *v1model.ObjectResult
@@ -31,6 +36,27 @@ func NewImageController(baseController ControllerInterface, client *client.Clien
 
 func (controller *ImageController) BaseController() ControllerInterface {
 	return controller.baseController
+}
+
+func (controller *ImageController) AttemptPull(ctx context.Context, imageId string, alwaysPull bool) *v1model.ObjectResult {
+	pullImage := alwaysPull
+	if !pullImage {
+		imageResult := controller.BaseController().Image().Get(ctx, &v1model.GetImageRequest{ImageId: imageId})
+		if imageResult.Error != nil {
+			if imageResult.Error.Code == v1model.ImageNotFoundCode {
+				pullImage = true
+			}
+		} else {
+			pullImage = false //本地已存在
+		}
+	}
+
+	if pullImage { //拉取镜像（如果需要）
+		if ret := controller.BaseController().Image().Pull(ctx, &v1model.PullImageRequest{Image: imageId}); ret.Error != nil {
+			return ret
+		}
+	}
+	return v1model.ResultWithObject(imageId)
 }
 
 func (controller *ImageController) Get(ctx context.Context, request *v1model.GetImageRequest) *v1model.ObjectResult {

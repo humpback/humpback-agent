@@ -96,14 +96,8 @@ func (controller *ContainerController) List(ctx context.Context, request *v1mode
 }
 
 func (controller *ContainerController) Create(ctx context.Context, request *v1model.CreateContainerRequest) *v1model.ObjectResult {
-	if request.AlwaysPull { //拉取镜像（如果需要）
-		if ret := controller.BaseController().Image().Pull(ctx, &v1model.PullImageRequest{Image: request.Image}); ret.Error != nil {
-			return ret
-		}
-	}
-
 	isJob := false
-	if len(request.ScheduleInfo.Rules) > 0 {
+	if request.ScheduleInfo != nil && len(request.ScheduleInfo.Rules) > 0 {
 		isJob = true
 		var jobRules string
 		if len(request.ScheduleInfo.Rules) > 0 {
@@ -221,6 +215,11 @@ func (controller *ContainerController) Create(ctx context.Context, request *v1mo
 				},
 			}
 		}
+	}
+
+	//先尝试处理镜像
+	if pullResult := controller.BaseController().Image().AttemptPull(context.Background(), request.Image, request.AlwaysPull); pullResult.Error != nil {
+		return pullResult
 	}
 
 	var containerInfo container.CreateResponse
