@@ -2,10 +2,11 @@ package controller
 
 import (
 	"context"
+	v1model "humpback-agent/api/v1/model"
+
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/errdefs"
-	v1model "humpback-agent/api/v1/model"
 )
 
 type ImageInternalControllerInterface interface {
@@ -90,6 +91,15 @@ func (controller *ImageController) Pull(ctx context.Context, request *v1model.Pu
 	}
 
 	defer out.Close()
+
+	// wait pull image
+	for {
+		_, err := out.Read(make([]byte, 1024))
+		if err != nil {
+			break
+		}
+	}
+
 	imageInfo, _, err := controller.client.ImageInspectWithRaw(ctx, request.Image)
 	if err != nil {
 		return v1model.ObjectInternalErrorResult(v1model.ImagePullErrorCode, err.Error())
