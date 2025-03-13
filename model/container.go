@@ -25,21 +25,22 @@ const (
 )
 
 var stateMap = map[string]string{
-	"healthy":   ContainerStatusRunning,
-	"unhealthy": ContainerStatusFailed,
-	"starting":  ContainerStatusStarting,
-	"running":   ContainerStatusRunning,
-	"exited":    ContainerStatusExited,
-	"create":    ContainerStatusCreated,
-	"created":   ContainerStatusCreated,
-	"stop":      ContainerStatusExited,
-	"stopped":   ContainerStatusExited,
-	"destroy":   ContainerStatusRemoved,
-	"remove":    ContainerStatusRemoved,
-	"removing":  ContainerStatusRemoved,
-	"delete":    ContainerStatusRemoved,
-	"pending":   ContainerStatusPending,
-	"warning":   ContainerStatusWarning,
+	"healthy":    ContainerStatusRunning,
+	"unhealthy":  ContainerStatusFailed,
+	"starting":   ContainerStatusStarting,
+	"restarting": ContainerStatusStarting,
+	"running":    ContainerStatusRunning,
+	"exited":     ContainerStatusExited,
+	"create":     ContainerStatusCreated,
+	"created":    ContainerStatusCreated,
+	"stop":       ContainerStatusExited,
+	"stopped":    ContainerStatusExited,
+	"destroy":    ContainerStatusRemoved,
+	"remove":     ContainerStatusRemoved,
+	"removing":   ContainerStatusRemoved,
+	"delete":     ContainerStatusRemoved,
+	"pending":    ContainerStatusPending,
+	"warning":    ContainerStatusWarning,
 }
 
 type ContainerPort struct {
