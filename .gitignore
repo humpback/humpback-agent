@@ -23,7 +23,7 @@ _testmain.go
 *.test
 *.prof
 vendor/
-.idea
+.idea/**
 humpback-agent
 humpback-agent.exe
 humpback_agent

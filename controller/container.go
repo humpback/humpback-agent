@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
-	v1model "humpback-agent/api/v1/model"
-	"humpback-agent/internal/schedule"
-	"humpback-agent/model"
+	"errors"
 	"io"
 	"strconv"
 	"strings"
+
+	v1model "humpback-agent/api/v1/model"
+	"humpback-agent/internal/schedule"
+	"humpback-agent/model"
 
 	"github.com/docker/docker/errdefs"
 
@@ -336,17 +338,12 @@ func (controller *ContainerController) Logs(ctx context.Context, request *v1mode
 		options.Details = *request.Details
 	}
 
-	dockerLogs := model.DockerContainerLog{
-		DockerLogs: []model.DockerLog{},
-	}
+	var (
+		logs = make([]string, 0)
+		line = 0
+	)
 
 	if err := controller.baseController.WithTimeout(ctx, func(ctx context.Context) error {
-		containerBody, inspectErr := controller.client.ContainerInspect(ctx, request.ContainerId)
-		if inspectErr != nil {
-			return inspectErr
-		}
-
-		dockerLogs.ContainerId = containerBody.ID
 		//获取日志流
 		logReader, logsErr := controller.client.ContainerLogs(ctx, request.ContainerId, options)
 		if logsErr != nil {
@@ -356,7 +353,6 @@ func (controller *ContainerController) Logs(ctx context.Context, request *v1mode
 		defer logReader.Close()
 		hdr := make([]byte, 8)
 		for {
-			var docLog model.DockerLog
 			_, readErr := logReader.Read(hdr)
 			if readErr != nil {
 				if readErr == io.EOF {
@@ -371,24 +367,17 @@ func (controller *ContainerController) Logs(ctx context.Context, request *v1mode
 			if readErr != nil && readErr != io.EOF {
 				return readErr
 			}
-
-			time, log, found := strings.Cut(string(dat), " ")
-			if found {
-				docLog.Time = time
-				docLog.Log = log
-				switch hdr[0] {
-				case 1:
-					docLog.Stream = "Stdout"
-				default:
-					docLog.Stream = "Stderr"
-				}
-				dockerLogs.DockerLogs = append(dockerLogs.DockerLogs, docLog)
+			if line > 10000 {
+				return errors.New("The maximum limit of 10,000 rows is exceeded.")
 			}
+
+			logs = append(logs, string(dat))
+			line++
 		}
 	}); err != nil {
 		return v1model.ObjectInternalErrorResult(v1model.ContainerLogsErrorCode, err.Error())
 	}
-	return v1model.ResultWithObject(dockerLogs)
+	return v1model.ResultWithObject(logs)
 }
 
 func (controller *ContainerController) Stats(ctx context.Context, request *v1model.GetContainerStatsRequest) *v1model.ObjectResult {
