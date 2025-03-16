@@ -1,14 +1,13 @@
 package service
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"humpback-agent/api"
 	v1model "humpback-agent/api/v1/model"
 	"humpback-agent/config"
 	"humpback-agent/controller"
+	reqclient "humpback-agent/internal/client"
 	"humpback-agent/internal/docker"
 	"humpback-agent/internal/schedule"
 	"humpback-agent/model"
@@ -36,6 +35,14 @@ type AgentService struct {
 }
 
 func NewAgentService(ctx context.Context, config *config.AppConfig) (*AgentService, error) {
+	//构建Agent服务
+	agentService := &AgentService{
+		config: config,
+		httpClient: &http.Client{
+			Timeout: config.Health.Timeout,
+		},
+		containers: make(map[string]*model.ContainerInfo),
+	}
 	//构建Docker-client
 	dockerClient, err := docker.BuildDockerClient(config.DockerConfig)
 	if err != nil {
@@ -43,23 +50,15 @@ func NewAgentService(ctx context.Context, config *config.AppConfig) (*AgentServi
 	}
 
 	//构建API和Controller接口
-	appController := controller.NewController(dockerClient, config.DockerTimeoutOpts.Request)
+	appController := controller.NewController(dockerClient, agentService.sendConfigValuesRequest, config.VolumesConfig.RootDirectory, config.DockerTimeoutOpts.Request)
 	apiServer, err := api.NewAPIServer(appController, config.APIConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	//构建Agent服务
-	agentService := &AgentService{
-		config:    config,
-		apiServer: apiServer,
-		httpClient: &http.Client{
-			Timeout: config.Health.Timeout,
-		},
-		scheduler:  schedule.NewJobScheduler(dockerClient), //构建任务定时调度器
-		controller: appController,
-		containers: make(map[string]*model.ContainerInfo),
-	}
+	agentService.apiServer = apiServer
+	agentService.scheduler = schedule.NewJobScheduler(dockerClient) //构建任务定时调度器
+	agentService.controller = appController
 
 	//启动先加载本地所有容器
 	if err = agentService.loadDockerContainers(ctx); err != nil {
@@ -253,33 +252,22 @@ func (agentService *AgentService) sendHealthRequest(ctx context.Context) error {
 	}
 	agentService.RUnlock()
 
-	hostHealthRequest := &model.HostHealthRequest{
+	payload := &model.HostHealthRequest{
 		HostInfo:     model.GetHostInfo(agentService.config.APIConfig.Bind),
 		DockerEngine: *dockerEngineInfo,
 		Containers:   containers,
 	}
+	return reqclient.PostRequest(agentService.httpClient, fmt.Sprintf("%s/api/health", agentService.config.ServerConfig.Host), payload)
+}
 
-	data, err := json.Marshal(hostHealthRequest)
-	if err != nil {
-		return err
+func (agentService *AgentService) sendConfigValuesRequest(configNames []string) (map[string][]byte, error) {
+	configPair := map[string][]byte{}
+	for _, configName := range configNames {
+		data, err := reqclient.GetRequest(agentService.httpClient, fmt.Sprintf("%s/api/config/%s", agentService.config.ServerConfig.Host, configName))
+		if err != nil {
+			return nil, err
+		}
+		configPair[configName] = data
 	}
-
-	// fmt.Println(string(data))
-
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/api/health", agentService.config.ServerConfig.Host), bytes.NewBuffer(data))
-	if err != nil {
-		return err
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := agentService.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("response status error %d", resp.StatusCode)
-	}
-	return nil
+	return configPair, nil
 }

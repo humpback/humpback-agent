@@ -20,6 +20,8 @@ var (
 		MaxAge:     7,
 		Compress:   false,
 	}
+
+	defaultVolumesPath = "/var/lib/humpback/volumes"
 )
 
 type APIConfig struct {
@@ -78,11 +80,16 @@ type ServerConfig struct {
 	Health ServerHealthConfig `json:"health" yaml:"health"`
 }
 
+type VolumesConfig struct {
+	RootDirectory string `yaml:"rootDirectory"`
+}
+
 type AppConfig struct {
-	*APIConfig    `json:"api" yaml:"api"`
-	*ServerConfig `json:"server" yaml:"server"`
-	*DockerConfig `json:"docker" yaml:"docker"`
-	*LoggerConfig `json:"logger" yaml:"logger"`
+	*APIConfig     `json:"api" yaml:"api"`
+	*ServerConfig  `json:"server" yaml:"server"`
+	*VolumesConfig `json:"volumes" yaml:"volumes"`
+	*DockerConfig  `json:"docker" yaml:"docker"`
+	*LoggerConfig  `json:"logger" yaml:"logger"`
 }
 
 func NewAppConfig(configPath string) (*AppConfig, error) {
@@ -102,6 +109,12 @@ func NewAppConfig(configPath string) (*AppConfig, error) {
 
 	if appConfig.APIConfig == nil {
 		return nil, ErrAPIConfigInvalid
+	}
+
+	if appConfig.VolumesConfig == nil || appConfig.VolumesConfig.RootDirectory == "" {
+		appConfig.VolumesConfig = &VolumesConfig{
+			RootDirectory: defaultVolumesPath,
+		}
 	}
 
 	if appConfig.DockerConfig == nil {

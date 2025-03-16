@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -13,14 +14,14 @@ import (
 	"humpback-agent/internal/schedule"
 	"humpback-agent/model"
 
-	"github.com/docker/docker/errdefs"
-
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/errdefs"
 	"github.com/docker/go-connections/nat"
 )
 
@@ -219,6 +220,11 @@ func (controller *ContainerController) Create(ctx context.Context, request *v1mo
 		}
 	}
 
+	//处理卷配置绑定
+	if err := controller.buildHostConfigVolumesWithRequest(request.Volumes, hostConfig); err != nil {
+		return v1model.ObjectInternalErrorResult(v1model.ContainerCreateErrorCode, err.Error())
+	}
+
 	//先尝试处理镜像
 	if pullResult := controller.BaseController().Image().AttemptPull(context.Background(), request.Image, request.AlwaysPull); pullResult.Error != nil {
 		return pullResult
@@ -390,7 +396,39 @@ func (controller *ContainerController) Stats(ctx context.Context, request *v1mod
 		defer statsReader.Body.Close()
 		return json.NewDecoder(statsReader.Body).Decode(&containerStats)
 	}); err != nil {
-		return v1model.ObjectInternalErrorResult(v1model.ContainerLogsErrorCode, err.Error())
+		return v1model.ObjectInternalErrorResult(v1model.ContainerStatsErrorCode, err.Error())
 	}
 	return v1model.ResultWithObject(model.ParseContainerStats(&containerStats))
+}
+
+func (controller *ContainerController) buildHostConfigVolumesWithRequest(reqVolumes []*v1model.ServiceVolume, hostConfig *container.HostConfig) error {
+	configNames := controller.BaseController().GetConfigNamesWithVolumes(reqVolumes)
+	configPaths, err := controller.BaseController().BuildVolumesWithConfigNames(configNames)
+	if err != nil {
+		return err
+	}
+
+	var mounts []mount.Mount
+	for _, volume := range reqVolumes {
+		if volume.Type == v1model.ServiceVolumeTypeBind {
+			matches := re.FindStringSubmatch(volume.Source)
+			if len(matches) > 1 {
+				path, ret := configPaths[matches[1]]
+				if !ret {
+					return fmt.Errorf("invalid %s volume path: %s", volume.Type, volume.Source)
+				}
+				volume.Source = path
+			}
+
+			// 将配置转换为 mount.Mount
+			mounts = append(mounts, mount.Mount{
+				Type:     mount.Type(volume.Type),
+				Source:   volume.Source,
+				Target:   volume.Target,
+				ReadOnly: volume.Readonly,
+			})
+		}
+	}
+	hostConfig.Mounts = mounts
+	return nil
 }

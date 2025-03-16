@@ -56,12 +56,27 @@ type LogConfig struct {
 	Config map[string]string `json:"config"`
 }
 
+type ServiceVolumeType string
+
+var (
+	ServiceVolumeTypeBind   ServiceVolumeType = "bind"
+	ServiceVolumeTypeVolume ServiceVolumeType = "volume"
+)
+
+type ServiceVolume struct {
+	Type     ServiceVolumeType `json:"type"`
+	Target   string            `json:"target"`
+	Source   string            `json:"source"`
+	Readonly bool              `json:"readOnly"`
+}
+
 type ContainerMeta struct {
 	Image         string            `json:"image"`
 	AlwaysPull    bool              `json:"alwaysPull"`
 	Command       string            `json:"command"`
 	Envs          []string          `json:"env"`
 	Labels        map[string]string `json:"labels"`
+	Volumes       []*ServiceVolume  `json:"volumes"`
 	Network       *NetworkInfo      `json:"network"`
 	RestartPolicy *RestartPolicy    `json:"restartPolicy"`
 	Capabilities  *Capabilities     `json:"capabilities"`
