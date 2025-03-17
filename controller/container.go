@@ -201,18 +201,28 @@ func (controller *ContainerController) Create(ctx context.Context, request *v1mo
 			hostConfig.NetworkMode = container.NetworkMode(request.Network.Mode)
 			containerConfig.Hostname = request.Network.Hostname
 			portBindings := nat.PortMap{}
-			for _, bindPort := range request.Network.Ports {
-				proto := strings.ToLower(bindPort.Protocol)
-				if proto != "tcp" && proto != "udp" {
-					proto = "tcp" // 默认使用 TCP
+			if request.Network != nil && len(request.Network.Ports) > 0 {
+				for _, bindPort := range request.Network.Ports {
+					proto := strings.ToLower(bindPort.Protocol)
+					if proto != "tcp" && proto != "udp" {
+						proto = "tcp" // 默认使用 TCP
+					}
+					port, err := nat.NewPort(proto, strconv.Itoa(int(bindPort.ContainerPort)))
+					if err != nil {
+						return v1model.ObjectInternalErrorResult(v1model.ContainerCreateErrorCode, err.Error())
+					}
+					hostPort := int(bindPort.HostPort)
+					if hostPort == 0 {
+						if hostPort, err = controller.BaseController().AllocPort(proto); err != nil {
+							return v1model.ObjectInternalErrorResult(v1model.ContainerCreateErrorCode, err.Error())
+						}
+					}
+					portBindings[port] = []nat.PortBinding{{HostPort: strconv.Itoa(hostPort)}}
 				}
-				port, err := nat.NewPort(proto, strconv.Itoa(int(bindPort.ContainerPort)))
-				if err != nil {
-					return v1model.ObjectInternalErrorResult(v1model.ContainerCreateErrorCode, err.Error())
-				}
-				portBindings[port] = []nat.PortBinding{{HostPort: strconv.Itoa(int(bindPort.HostPort))}}
+				hostConfig.PortBindings = portBindings
+			} else {
+				hostConfig.PublishAllPorts = true //若请求中没设置端口, 则自动暴露镜像Dockerfile中的所有端口
 			}
-			hostConfig.PortBindings = portBindings
 			networkConfig = &network.NetworkingConfig{
 				EndpointsConfig: map[string]*network.EndpointSettings{
 					"bridge": {

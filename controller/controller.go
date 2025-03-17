@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/libnetwork/portallocator"
 	"github.com/google/uuid"
 	v1model "humpback-agent/api/v1/model"
 	"humpback-agent/model"
@@ -24,6 +25,7 @@ type InternalController interface {
 	GetConfigNamesWithVolumes(volumes []*v1model.ServiceVolume) map[string]string
 	BuildVolumesWithConfigNames(configNames map[string]string) (map[string]string, error)
 	ConfigValues(ctx context.Context, configNames []string) (map[string][]byte, error)
+	AllocPort(proto string) (int, error)
 }
 
 type ControllerInterface interface {
@@ -107,6 +109,14 @@ func (controller *BaseController) ConfigValues(ctx context.Context, configNames 
 	return nil, fmt.Errorf("no setting config value getter")
 }
 
+func (controller *BaseController) AllocPort(proto string) (int, error) {
+	if proto == "" {
+		proto = "tcp"
+	}
+	pa := portallocator.Get()
+	return pa.RequestPort(nil, proto, 0)
+}
+
 func (controller *BaseController) BuildVolumesWithConfigNames(configNames map[string]string) (map[string]string, error) {
 	configPaths := map[string]string{}
 	if len(configNames) > 0 {
@@ -114,7 +124,7 @@ func (controller *BaseController) BuildVolumesWithConfigNames(configNames map[st
 		for name, _ := range configNames {
 			names = append(names, name)
 		}
-		
+
 		configValues, err := controller.ConfigValues(context.Background(), names)
 		if err != nil {
 			return nil, err

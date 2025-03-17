@@ -50,7 +50,13 @@ func NewAgentService(ctx context.Context, config *config.AppConfig) (*AgentServi
 	}
 
 	//构建API和Controller接口
-	appController := controller.NewController(dockerClient, agentService.sendConfigValuesRequest, config.VolumesConfig.RootDirectory, config.DockerTimeoutOpts.Request)
+	appController := controller.NewController(
+		dockerClient,
+		agentService.sendConfigValuesRequest,
+		config.VolumesConfig.RootDirectory,
+		config.DockerTimeoutOpts.Request,
+	)
+
 	apiServer, err := api.NewAPIServer(appController, config.APIConfig)
 	if err != nil {
 		return nil, err
