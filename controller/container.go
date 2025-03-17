@@ -211,7 +211,13 @@ func (controller *ContainerController) Create(ctx context.Context, request *v1mo
 					if err != nil {
 						return v1model.ObjectInternalErrorResult(v1model.ContainerCreateErrorCode, err.Error())
 					}
-					portBindings[port] = []nat.PortBinding{{HostPort: strconv.Itoa(int(bindPort.HostPort))}}
+					hostPort := int(bindPort.HostPort)
+					if hostPort == 0 {
+						if hostPort, err = controller.BaseController().AllocPort(proto); err != nil {
+							return v1model.ObjectInternalErrorResult(v1model.ContainerCreateErrorCode, err.Error())
+						}
+					}
+					portBindings[port] = []nat.PortBinding{{HostPort: strconv.Itoa(hostPort)}}
 				}
 				hostConfig.PortBindings = portBindings
 			} else {
