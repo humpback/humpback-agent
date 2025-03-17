@@ -19,7 +19,6 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/errdefs"
 	"github.com/docker/go-connections/nat"
@@ -99,6 +98,10 @@ func (controller *ContainerController) List(ctx context.Context, request *v1mode
 }
 
 func (controller *ContainerController) Create(ctx context.Context, request *v1model.CreateContainerRequest) *v1model.ObjectResult {
+
+	// value, _ := json.MarshalIndent(request, "", "    ")
+	// fmt.Printf("%s\n", value)
+
 	isJob := false
 	if request.ScheduleInfo != nil && len(request.ScheduleInfo.Rules) > 0 {
 		isJob = true
@@ -121,7 +124,7 @@ func (controller *ContainerController) Create(ctx context.Context, request *v1mo
 	}
 
 	if request.Command != "" {
-		containerConfig.Cmd = strslice.StrSlice{request.Command}
+		containerConfig.Cmd = strings.Fields(request.Command)
 	}
 
 	hostConfig := &container.HostConfig{
