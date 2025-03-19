@@ -202,6 +202,7 @@ func (controller *ContainerController) Create(ctx context.Context, request *v1mo
 			containerConfig.Hostname = request.Network.Hostname
 			portBindings := nat.PortMap{}
 			if request.Network != nil && len(request.Network.Ports) > 0 {
+				containerConfig.ExposedPorts = make(nat.PortSet)
 				for _, bindPort := range request.Network.Ports {
 					proto := strings.ToLower(bindPort.Protocol)
 					if proto != "tcp" && proto != "udp" {
@@ -217,6 +218,7 @@ func (controller *ContainerController) Create(ctx context.Context, request *v1mo
 							return v1model.ObjectInternalErrorResult(v1model.ContainerCreateErrorCode, err.Error())
 						}
 					}
+					containerConfig.ExposedPorts[port] = struct{}{}
 					portBindings[port] = []nat.PortBinding{{HostPort: strconv.Itoa(hostPort)}}
 				}
 				hostConfig.PortBindings = portBindings
