@@ -25,8 +25,8 @@ var (
 )
 
 type APIConfig struct {
-	Bind        string   `json:"bind" yaml:"bind"`
-	Mode        string   `json:"mode" yaml:"mode"`
+	Bind        string   `json:"bind" yaml:"bind" env:"HUMPBACK_AGENT_API_BIND"`
+	Mode        string   `json:"mode" yaml:"mode" env:"HUMPBACK_AGENT_API_MODE"`
 	Middlewares []string `json:"middlewares" yaml:"middlewares"`
 	Versions    []string `json:"versions" yaml:"versions"`
 	AccessToken string   `json:"accessToken" yaml:"accessToken"`
@@ -62,26 +62,26 @@ type DockerRegistryOpts struct {
 }
 
 type DockerConfig struct {
-	Host               string             `json:"host" yaml:"host"`
-	Version            string             `json:"version" yaml:"version"`
-	AutoNegotiate      bool               `json:"autoNegotiate" yaml:"autoNegotiate"`
+	Host               string             `json:"host" yaml:"host" env:"HUMPBACK_DOCKER_HOST"`
+	Version            string             `json:"version" yaml:"version" env:"HUMPBACK_DOCKER_VERSION"`
+	AutoNegotiate      bool               `json:"autoNegotiate" yaml:"autoNegotiate" env:"HUMPBACK_DOCKER_AUTO_NEGOTIATE"`
 	DockerTimeoutOpts  DockerTimeoutOpts  `json:"timeout" yaml:"timeout"`
 	DockerTLSOpts      DockerTLSOpts      `json:"tls" yaml:"tls"`
 	DockerRegistryOpts DockerRegistryOpts `json:"registry" yaml:"registry"`
 }
 
 type ServerHealthConfig struct {
-	Interval time.Duration `json:"interval" yaml:"interval"`
-	Timeout  time.Duration `json:"timeout" yaml:"timeout"`
+	Interval time.Duration `json:"interval" yaml:"interval" env:"HUMPBACK_SERVER_HEALTH_INTERVAL"`
+	Timeout  time.Duration `json:"timeout" yaml:"timeout" env:"HUMPBACK_SERVER_HEALTH_TIMEOUT"`
 }
 
 type ServerConfig struct {
-	Host   string             `json:"host" yaml:"host"`
+	Host   string             `json:"host" yaml:"host" env:"HUMPBACK_SERVER_HOST"`
 	Health ServerHealthConfig `json:"health" yaml:"health"`
 }
 
 type VolumesConfig struct {
-	RootDirectory string `yaml:"rootDirectory"`
+	RootDirectory string `json:"rootDirectory" yaml:"rootDirectory" env:"HUMPBACK_VOLUMES_ROOT_DIRECTORY"`
 }
 
 type AppConfig struct {

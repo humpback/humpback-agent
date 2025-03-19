@@ -6,9 +6,11 @@
   <component name="ChangeListManager">
     <list default="true" id="ac5b5e57-c5ec-4aab-99d4-72a63dae6b25" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controller/container.go" beforeDir="false" afterPath="$PROJECT_DIR$/controller/container.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controller/controller.go" beforeDir="false" afterPath="$PROJECT_DIR$/controller/controller.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/service/agent.go" beforeDir="false" afterPath="$PROJECT_DIR$/service/agent.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/config/config.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/parse_env.go" beforeDir="false" afterPath="$PROJECT_DIR$/config/parse_env.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/go.sum" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/utils/fs.go" beforeDir="false" afterPath="$PROJECT_DIR$/pkg/utils/fs.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -62,6 +64,17 @@
     <configuration name="go build humpback-agent" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
       <module name="humpback-agent" />
       <working_directory value="$PROJECT_DIR$" />
+      <envs>
+        <env name="HUMPBACK_AGENT_API_BIND" value="0.0.0.0:8909" />
+        <env name="HUMPBACK_AGENT_API_MODE" value="releases" />
+        <env name="HUMPBACK_DOCKER_AUTO_NEGOTIATE" value="true" />
+        <env name="HUMPBACK_DOCKER_HOST" value="unix:///var/run/docker.sock" />
+        <env name="HUMPBACK_DOCKER_VERSION" value="1.41" />
+        <env name="HUMPBACK_SERVER_HEALTH_INTERVAL" value="55s" />
+        <env name="HUMPBACK_SERVER_HEALTH_TIMEOUT" value="33s" />
+        <env name="HUMPBACK_SERVER_HOST" value="http://127.0.0.1:8888" />
+        <env name="HUMPBACK_VOLUMES_ROOT_DIRECTORY" value="$USER_HOME$/humpback" />
+      </envs>
       <kind value="PACKAGE" />
       <package value="humpback-agent" />
       <directory value="$PROJECT_DIR$" />
