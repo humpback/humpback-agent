@@ -8,7 +8,7 @@ api:
 
 # 服务器配置
 server:
-  host: http://172.30.112.1:8201
+  host: http://172.30.112.1:8101
   health:
     interval: 30s
     timeout: 15s
