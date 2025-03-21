@@ -242,7 +242,7 @@ func (controller *ContainerController) Create(ctx context.Context, request *v1mo
 
 	//先尝试处理镜像
 	if pullResult := controller.BaseController().Image().AttemptPull(context.Background(), request.Image, request.AlwaysPull); pullResult.Error != nil {
-		return pullResult
+		return v1model.ObjectInternalErrorResult(v1model.ImagePullErrorCode, pullResult.Error.ErrMsg)
 	}
 
 	var containerInfo container.CreateResponse
