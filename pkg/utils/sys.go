@@ -27,7 +27,7 @@ func HostCPU() (int, float32, float32) {
 	return totalCPU, usedCPU, cpuUsage
 }
 
-func HostMemory() (uint64, float32, float32) {
+func HostMemory() (uint64, uint64, float32) {
 	// 获取内存信息
 	memInfo, err := mem.VirtualMemory()
 	if err != nil {
@@ -35,7 +35,7 @@ func HostMemory() (uint64, float32, float32) {
 	}
 
 	totalMEM := memInfo.Total
-	usedMEM := float32(memInfo.Used)
+	usedMEM := memInfo.Used
 	memUsage := float32(math.Round(memInfo.UsedPercent*100) / 100) // 内存使用率保留两位小数
 	return totalMEM, usedMEM, memUsage
 }
