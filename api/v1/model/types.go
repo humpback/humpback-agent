@@ -18,10 +18,11 @@ var (
 )
 
 type NetworkInfo struct {
-	Mode        NetworkMode `json:"mode"`        // custom模式需要创建网络
-	Hostname    string      `json:"hostname"`    // bridge及custom模式时可设置，用户容器的hostname
-	NetworkName string      `json:"networkName"` //custom模式使用
-	Ports       []*PortInfo `json:"ports"`
+	Mode               NetworkMode `json:"mode"`        // custom模式需要创建网络
+	Hostname           string      `json:"hostname"`    // bridge及custom模式时可设置，用户容器的hostname
+	NetworkName        string      `json:"networkName"` //custom模式使用
+	UseMachineHostname bool        `json:"useMachineHostname"`
+	Ports              []*PortInfo `json:"ports"`
 }
 
 type PortInfo struct {
