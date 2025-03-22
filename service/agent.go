@@ -162,6 +162,9 @@ func (agentService *AgentService) handleDockerEvent(message events.Message) {
 				logrus.Errorf("Docker create container %s event, %v", message.Actor.ID, err)
 			}
 			if containerInfo != nil {
+
+				needReport := true
+
 				if message.Action == "create" {
 					if _, ret := containerInfo.Labels[schedule.HumpbackJobRulesLabel]; ret { //创建了一个job定时容器, 交给定时调度器
 						agentService.addToScheduler(containerInfo.ContainerId, containerInfo.ContainerName, containerInfo.Image, containerInfo.Labels)
@@ -174,10 +177,12 @@ func (agentService *AgentService) handleDockerEvent(message events.Message) {
 							}
 						}
 						agentService.Unlock()
+					} else {
+						// 非定时容器的create，不需要汇报心跳
+						needReport = false
 					}
 				}
 
-				needReport := true
 				agentService.Lock()
 				old, ok := agentService.containers[containerInfo.ContainerId]
 				if ok && old.State == containerInfo.State {
