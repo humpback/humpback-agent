@@ -2,9 +2,10 @@ package model
 
 import (
 	"fmt"
-	"humpback-agent/pkg/utils"
 	"os"
 	"runtime"
+
+	"humpback-agent/pkg/utils"
 )
 
 type HostInfo struct {
@@ -14,8 +15,8 @@ type HostInfo struct {
 	TotalCPU      int      `json:"totalCPU"`
 	UsedCPU       float32  `json:"usedCPU"`
 	CPUUsage      float32  `json:"cpuUsage"`
-	TotalMemoryGB int      `json:"totalMemoryGB"`
-	UsedMemoryGB  float32  `json:"usedMemoryGB"`
+	TotalMemory   uint64   `json:"totalMemory"`
+	UsedMemory    uint64   `json:"usedMemory"`
 	MemoryUsage   float32  `json:"memoryUsage"`
 	HostIPs       []string `json:"hostIPs"`
 	HostPort      int      `json:"hostPort"`
@@ -50,8 +51,8 @@ func GetHostInfo(bind string) HostInfo {
 		TotalCPU:      totalCPU,
 		UsedCPU:       usedCPU,
 		CPUUsage:      cpuUsage,
-		TotalMemoryGB: int(utils.BytesToGB(totalMEM)),
-		UsedMemoryGB:  utils.BytesToGB(usedMEM),
+		TotalMemory:   totalMEM,
+		UsedMemory:    usedMEM,
 		MemoryUsage:   memUsage,
 		HostIPs:       utils.HostIPs(),
 		HostPort:      utils.BindPort(bind),

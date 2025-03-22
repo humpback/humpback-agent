@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 
@@ -178,8 +179,12 @@ func (controller *ContainerController) Create(ctx context.Context, request *v1mo
 
 	var networkConfig *network.NetworkingConfig
 	if request.Network != nil {
+		hostname := request.Network.Hostname
+		if request.Network.UseMachineHostname {
+			hostname, _ = os.Hostname()
+		}
 		if request.Network.Mode == v1model.NetworkModeCustom { //构建自定义网络
-			containerConfig.Hostname = request.Network.Hostname
+			containerConfig.Hostname = hostname
 			if request.Network.NetworkName != "" {
 				networkResult := controller.BaseController().Network().Create(ctx, &v1model.CreateNetworkRequest{NetworkName: request.Network.NetworkName, Driver: "bridge", Scope: "local"})
 				if networkResult.Error != nil {
@@ -199,9 +204,10 @@ func (controller *ContainerController) Create(ctx context.Context, request *v1mo
 			hostConfig.PublishAllPorts = true
 		} else if request.Network.Mode == v1model.NetworkModeBridge { // 桥接, 配置 PortBindings
 			hostConfig.NetworkMode = container.NetworkMode(request.Network.Mode)
-			containerConfig.Hostname = request.Network.Hostname
+			containerConfig.Hostname = hostname
 			portBindings := nat.PortMap{}
 			if request.Network != nil && len(request.Network.Ports) > 0 {
+				containerConfig.ExposedPorts = make(nat.PortSet)
 				for _, bindPort := range request.Network.Ports {
 					proto := strings.ToLower(bindPort.Protocol)
 					if proto != "tcp" && proto != "udp" {
@@ -217,6 +223,7 @@ func (controller *ContainerController) Create(ctx context.Context, request *v1mo
 							return v1model.ObjectInternalErrorResult(v1model.ContainerCreateErrorCode, err.Error())
 						}
 					}
+					containerConfig.ExposedPorts[port] = struct{}{}
 					portBindings[port] = []nat.PortBinding{{HostPort: strconv.Itoa(hostPort)}}
 				}
 				hostConfig.PortBindings = portBindings
@@ -240,7 +247,7 @@ func (controller *ContainerController) Create(ctx context.Context, request *v1mo
 
 	//先尝试处理镜像
 	if pullResult := controller.BaseController().Image().AttemptPull(context.Background(), request.Image, request.AlwaysPull); pullResult.Error != nil {
-		return pullResult
+		return v1model.ObjectInternalErrorResult(v1model.ImagePullErrorCode, pullResult.Error.ErrMsg)
 	}
 
 	var containerInfo container.CreateResponse
