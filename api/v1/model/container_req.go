@@ -1,9 +1,10 @@
 package model
 
 import (
-	"github.com/gin-gonic/gin"
 	"strconv"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 type GetContainerRequest struct {
@@ -49,6 +50,9 @@ func BindQueryContainerRequest(c *gin.Context) (*QueryContainerRequest, *ErrorRe
 
 type CreateContainerRequest struct {
 	ContainerName  string `json:"containerName"`
+	ServiceName    string `json:"serviceName"`
+	ServiceId      string `json:serviceId`
+	GroupId        string `json:"groupId"`
 	*ContainerMeta `json:",inline"`
 	*ScheduleInfo  `json:",inline"`
 }

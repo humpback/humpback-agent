@@ -42,8 +42,8 @@ type ScheduleInfo struct {
 }
 
 type Capabilities struct {
-	CapAdd  *[]string `json:"capAdd"`
-	CapDrop *[]string `json:"capDrop"`
+	CapAdd  []string `json:"capAdd"`
+	CapDrop []string `json:"capDrop"`
 }
 
 type Resources struct {
@@ -62,6 +62,12 @@ type ServiceVolumeType string
 var (
 	ServiceVolumeTypeBind   ServiceVolumeType = "bind"
 	ServiceVolumeTypeVolume ServiceVolumeType = "volume"
+)
+
+const (
+	ContainerLabelServiceId   = "Humpback-ServiceId"
+	ContainerLabelServiceName = "Humpback-ServiceName"
+	ContainerLabelGroupId     = "Humpback-GroupId"
 )
 
 type ServiceVolume struct {
