@@ -27,6 +27,7 @@ type InternalController interface {
 	BuildVolumesWithConfigNames(configNames map[string]string) (map[string]string, error)
 	ConfigValues(ctx context.Context, configNames []string) (map[string][]byte, error)
 	AllocPort(proto string) (int, error)
+	FailureChan() chan model.ContainerMeta
 }
 
 type ControllerInterface interface {
@@ -44,14 +45,16 @@ type BaseController struct {
 	image                ImageControllerInterface
 	container            ContainerControllerInterface
 	network              NetworkControllerInterface
+	failureChan          chan model.ContainerMeta
 }
 
-func NewController(client *client.Client, getConfigFunc GetConfigValueFunc, volumesRootDirectory string, reqTimeout time.Duration) ControllerInterface {
+func NewController(client *client.Client, getConfigFunc GetConfigValueFunc, volumesRootDirectory string, reqTimeout time.Duration, failureChan chan model.ContainerMeta) ControllerInterface {
 	baseController := &BaseController{
 		client:               client,
 		volumesRootDirectory: volumesRootDirectory,
 		reqTimeout:           reqTimeout,
 		getConfigFunc:        getConfigFunc,
+		failureChan:          failureChan,
 	}
 
 	baseController.image = NewImageController(baseController, client)
@@ -159,4 +162,8 @@ func (controller *BaseController) Container() ContainerControllerInterface {
 
 func (controller *BaseController) Network() NetworkControllerInterface {
 	return controller.network
+}
+
+func (controller *BaseController) FailureChan() chan model.ContainerMeta {
+	return controller.failureChan
 }

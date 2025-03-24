@@ -99,6 +99,21 @@ func (controller *ContainerController) List(ctx context.Context, request *v1mode
 }
 
 func (controller *ContainerController) Create(ctx context.Context, request *v1model.CreateContainerRequest) *v1model.ObjectResult {
+	result := controller.createInternal(ctx, request)
+
+	if result.Error != nil {
+		containerMeta := model.ContainerMeta{
+			ContainerName: request.ContainerName,
+			State:         model.ContainerStatusWarning,
+			ErrorMsg:      result.Error.ErrMsg,
+		}
+		controller.BaseController().FailureChan() <- containerMeta
+	}
+
+	return result
+}
+
+func (controller *ContainerController) createInternal(ctx context.Context, request *v1model.CreateContainerRequest) *v1model.ObjectResult {
 
 	value, _ := json.MarshalIndent(request, "", "    ")
 	fmt.Printf("%s\n", value)
@@ -297,7 +312,6 @@ func (controller *ContainerController) Delete(ctx context.Context, request *v1mo
 	if err := controller.baseController.WithTimeout(ctx, func(ctx context.Context) error {
 		containerBody, inspectErr := controller.client.ContainerInspect(ctx, request.ContainerId)
 		if inspectErr != nil {
-
 			return inspectErr
 		}
 		containerId = containerBody.ID

@@ -51,8 +51,9 @@ func BindQueryContainerRequest(c *gin.Context) (*QueryContainerRequest, *ErrorRe
 type CreateContainerRequest struct {
 	ContainerName  string `json:"containerName"`
 	ServiceName    string `json:"serviceName"`
-	ServiceId      string `json:serviceId`
+	ServiceId      string `json:"serviceId"`
 	GroupId        string `json:"groupId"`
+	ErrorMsg       string
 	*ContainerMeta `json:",inline"`
 	*ScheduleInfo  `json:",inline"`
 }
@@ -92,8 +93,9 @@ func BindCreateContainerRequest(c *gin.Context) (*CreateContainerRequest, *Error
 type UpdateContainerRequest struct{}
 
 type DeleteContainerRequest struct {
-	ContainerId string `json:"containerId"`
-	Force       bool   `json:"force"`
+	ContainerId   string `json:"containerId"`
+	ContainerName string `json:"containerName"`
+	Force         bool   `json:"force"`
 }
 
 func BindDeleteContainerRequest(c *gin.Context) (*DeleteContainerRequest, *ErrorResult) {
@@ -107,10 +109,12 @@ func BindDeleteContainerRequest(c *gin.Context) (*DeleteContainerRequest, *Error
 		force = value
 	}
 
+	containerName := c.Query("containerName")
 	containerId := c.Param("containerId")
 	return &DeleteContainerRequest{
-		ContainerId: containerId,
-		Force:       force,
+		ContainerId:   containerId,
+		ContainerName: containerName,
+		Force:         force,
 	}, nil
 }
 

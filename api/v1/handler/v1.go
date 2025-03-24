@@ -3,12 +3,14 @@ package handler
 import (
 	"context"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"humpback-agent/api/factory"
 	v1model "humpback-agent/api/v1/model"
 	"humpback-agent/controller"
+	"humpback-agent/model"
 	"net/http"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 const (
@@ -52,33 +54,36 @@ func NewV1Handler(controller controller.ControllerInterface) factory.HandlerInte
 }
 
 func (handler *V1Handler) watchTasks() {
-	defer close(handler.taskChan)
-	for {
-		select {
-		case task := <-handler.taskChan:
-			switch task.TaskType {
-			case ContainerCreateTask:
-				container := handler.Container()
-				go container.Create(context.Background(), task.TaskBody.(*v1model.CreateContainerRequest))
-			case ContainerDeleteTask:
-				container := handler.Container()
-				go container.Delete(context.Background(), task.TaskBody.(*v1model.DeleteContainerRequest))
-			case ContainerRestartTask:
-				container := handler.Container()
-				go container.Restart(context.Background(), task.TaskBody.(*v1model.RestartContainerRequest))
-			case ContainerStartTask:
-				container := handler.Container()
-				go container.Start(context.Background(), task.TaskBody.(*v1model.StartContainerRequest))
-			case ContainerStopTask:
-				container := handler.Container()
-				go container.Stop(context.Background(), task.TaskBody.(*v1model.StopContainerRequest))
-			case NetworkCreateTask:
-				network := handler.Network()
-				go network.Create(context.Background(), task.TaskBody.(*v1model.CreateNetworkRequest))
-			case NetworkDeleteTask:
-				network := handler.Network()
-				go network.Delete(context.Background(), task.TaskBody.(*v1model.DeleteNetworkRequest))
+
+	for task := range handler.taskChan {
+		switch task.TaskType {
+		case ContainerCreateTask:
+			container := handler.Container()
+			go container.Create(context.Background(), task.TaskBody.(*v1model.CreateContainerRequest))
+		case ContainerDeleteTask:
+			container := handler.Container()
+			request := task.TaskBody.(*v1model.DeleteContainerRequest)
+			containerMeta := model.ContainerMeta{
+				ContainerName: request.ContainerName,
+				IsDelete:      true,
 			}
+			container.BaseController().FailureChan() <- containerMeta
+			go container.Delete(context.Background(), request)
+		case ContainerRestartTask:
+			container := handler.Container()
+			go container.Restart(context.Background(), task.TaskBody.(*v1model.RestartContainerRequest))
+		case ContainerStartTask:
+			container := handler.Container()
+			go container.Start(context.Background(), task.TaskBody.(*v1model.StartContainerRequest))
+		case ContainerStopTask:
+			container := handler.Container()
+			go container.Stop(context.Background(), task.TaskBody.(*v1model.StopContainerRequest))
+		case NetworkCreateTask:
+			network := handler.Network()
+			go network.Create(context.Background(), task.TaskBody.(*v1model.CreateNetworkRequest))
+		case NetworkDeleteTask:
+			network := handler.Network()
+			go network.Delete(context.Background(), task.TaskBody.(*v1model.DeleteNetworkRequest))
 		}
 	}
 }
