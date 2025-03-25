@@ -104,7 +104,7 @@ func (controller *ContainerController) Create(ctx context.Context, request *v1mo
 	if result.Error != nil {
 		containerMeta := model.ContainerMeta{
 			ContainerName: request.ContainerName,
-			State:         model.ContainerStatusWarning,
+			State:         model.ContainerStatusFailed,
 			ErrorMsg:      result.Error.ErrMsg,
 		}
 		controller.BaseController().FailureChan() <- containerMeta
@@ -185,7 +185,7 @@ func (controller *ContainerController) createInternal(ctx context.Context, reque
 		if request.Resources.MemoryReservation > 0 {
 			hostConfig.Resources.MemoryReservation = int64(request.Resources.MemoryReservation * 1024 * 1024)
 		}
-		if hostConfig.Resources.Memory < hostConfig.Resources.MemoryReservation {
+		if hostConfig.Resources.Memory < hostConfig.Resources.MemoryReservation && hostConfig.Resources.Memory != 0 {
 			hostConfig.Resources.Memory = hostConfig.Resources.MemoryReservation
 		}
 		if request.Resources.MaxCpuUsage > 0 {
