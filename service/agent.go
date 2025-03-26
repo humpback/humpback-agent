@@ -229,7 +229,7 @@ func (agentService *AgentService) handleDockerEvent(message events.Message) {
 }
 
 func (agentService *AgentService) addToScheduler(containerId string, containerName string, containerImage string, containerLabels map[string]string) error {
-	if value, ret := containerLabels[schedule.HumpbackJobRulesLabel]; ret {
+	if value, ret := containerLabels[schedule.HumpbackJobRulesLabel]; ret && value != "Manual" {
 		var (
 			err        error
 			timeout    time.Duration

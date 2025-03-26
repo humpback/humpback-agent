@@ -128,11 +128,13 @@ func (controller *ContainerController) createInternal(ctx context.Context, reque
 	request.Labels[v1model.ContainerLabelGroupId] = request.GroupId
 	request.Labels[v1model.ContainerLabelServiceName] = request.ServiceName
 
-	if request.ScheduleInfo != nil && len(request.ScheduleInfo.Rules) > 0 {
+	if request.ScheduleInfo != nil && (len(request.ScheduleInfo.Rules) > 0 || request.ManualExec) {
 		isJob = true
 		var jobRules string
 		if len(request.ScheduleInfo.Rules) > 0 {
 			jobRules = strings.Join(request.ScheduleInfo.Rules, ";")
+		} else {
+			jobRules = "Manual"
 		}
 
 		request.Labels[schedule.HumpbackJobRulesLabel] = jobRules
