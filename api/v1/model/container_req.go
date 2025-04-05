@@ -49,11 +49,12 @@ func BindQueryContainerRequest(c *gin.Context) (*QueryContainerRequest, *ErrorRe
 }
 
 type CreateContainerRequest struct {
-	ContainerName  string `json:"containerName"`
-	ServiceName    string `json:"serviceName"`
-	ServiceId      string `json:"serviceId"`
-	GroupId        string `json:"groupId"`
-	ManualExec     bool   `json:"manualExec"`
+	ContainerName  string       `json:"containerName"`
+	ServiceName    string       `json:"serviceName"`
+	ServiceId      string       `json:"serviceId"`
+	GroupId        string       `json:"groupId"`
+	ManualExec     bool         `json:"manualExec"`
+	RegistryAuth   RegistryAuth `json:"registryAuth"`
 	ErrorMsg       string
 	*ContainerMeta `json:",inline"`
 	*ScheduleInfo  `json:",inline"`

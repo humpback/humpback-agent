@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -118,6 +119,11 @@ func (controller *ContainerController) createInternal(ctx context.Context, reque
 	value, _ := json.MarshalIndent(request, "", "    ")
 	fmt.Printf("%s\n", value)
 
+	//先尝试处理镜像
+	if pullResult := controller.BaseController().Image().AttemptPull(context.Background(), request.Image, request.AlwaysPull, request.RegistryAuth); pullResult.Error != nil {
+		return v1model.ObjectInternalErrorResult(v1model.ImagePullErrorCode, pullResult.Error.ErrMsg)
+	}
+
 	isJob := false
 
 	if request.Labels == nil {
@@ -140,6 +146,12 @@ func (controller *ContainerController) createInternal(ctx context.Context, reque
 		request.Labels[schedule.HumpbackJobRulesLabel] = jobRules
 		request.Labels[schedule.HumpbackJobAlwaysPullLabel] = strconv.FormatBool(request.AlwaysPull)
 		request.Labels[schedule.HumpbackJobMaxTimeoutLabel] = request.ScheduleInfo.Timeout
+
+		if request.RegistryAuth.RegistryUsername != "" && request.RegistryAuth.RegistryPassword != "" {
+			combined := strings.Join([]string{request.RegistryAuth.RegistryUsername, request.RegistryAuth.RegistryPassword, request.RegistryAuth.ServerAddress}, "^^")
+			encoded := base64.StdEncoding.EncodeToString([]byte(combined))
+			request.Labels[schedule.HumpbackJobImageAuth] = encoded
+		}
 	}
 
 	containerConfig := &container.Config{
@@ -279,11 +291,6 @@ func (controller *ContainerController) createInternal(ctx context.Context, reque
 	//处理卷配置绑定
 	if err := controller.buildHostConfigVolumesWithRequest(request.Volumes, hostConfig); err != nil {
 		return v1model.ObjectInternalErrorResult(v1model.ContainerCreateErrorCode, err.Error())
-	}
-
-	//先尝试处理镜像
-	if pullResult := controller.BaseController().Image().AttemptPull(context.Background(), request.Image, request.AlwaysPull); pullResult.Error != nil {
-		return v1model.ObjectInternalErrorResult(v1model.ImagePullErrorCode, pullResult.Error.ErrMsg)
 	}
 
 	var containerInfo container.CreateResponse

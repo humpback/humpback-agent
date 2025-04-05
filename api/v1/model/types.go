@@ -91,3 +91,9 @@ type ContainerMeta struct {
 	Resources     *Resources        `json:"resources"`
 	Privileged    bool              `json:"privileged"`
 }
+
+type RegistryAuth struct {
+	ServerAddress    string `json:"serverAddress"`
+	RegistryUsername string `json:"registryUsername"`
+	RegistryPassword string `json:"registryPassword"`
+}

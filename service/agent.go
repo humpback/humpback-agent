@@ -234,6 +234,7 @@ func (agentService *AgentService) addToScheduler(containerId string, containerNa
 			err        error
 			timeout    time.Duration
 			alwaysPull bool
+			authStr    string
 		)
 		rules := strings.Split(value, ";")
 		if value, ret = containerLabels[schedule.HumpbackJobMaxTimeoutLabel]; ret {
@@ -247,7 +248,12 @@ func (agentService *AgentService) addToScheduler(containerId string, containerNa
 				return err
 			}
 		}
-		return agentService.scheduler.AddContainer(containerId, containerName, containerImage, alwaysPull, rules, timeout)
+
+		if value, ret = containerLabels[schedule.HumpbackJobImageAuth]; ret {
+			authStr = value
+		}
+
+		return agentService.scheduler.AddContainer(containerId, containerName, containerImage, alwaysPull, rules, authStr, timeout)
 	}
 	return nil
 }

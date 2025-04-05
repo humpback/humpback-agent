@@ -2,9 +2,14 @@ package schedule
 
 import (
 	"context"
+	"encoding/base64"
+	"errors"
 	"fmt"
-	"github.com/docker/docker/api/types/network"
+	"strings"
 	"time"
+
+	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/api/types/registry"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
@@ -21,9 +26,10 @@ type Task struct {
 	Rule        string
 	client      *client.Client
 	executing   bool
+	Auth        string
 }
 
-func NewTask(containerId string, name string, image string, alwaysPull bool, timeout time.Duration, rule string, client *client.Client) *Task {
+func NewTask(containerId string, name string, image string, alwaysPull bool, timeout time.Duration, rule string, authStr string, client *client.Client) *Task {
 	return &Task{
 		ContainerId: containerId,
 		Name:        name,
@@ -33,6 +39,7 @@ func NewTask(containerId string, name string, image string, alwaysPull bool, tim
 		Rule:        rule,
 		client:      client,
 		executing:   false,
+		Auth:        authStr,
 	}
 }
 
@@ -94,6 +101,37 @@ func (task *Task) getImageId() (string, error) {
 }
 
 func (task *Task) pullImage() (string, error) {
+
+	if task.Auth != "" {
+
+		decodedBytes, err := base64.StdEncoding.DecodeString(task.Auth)
+		if err != nil {
+			return "", err
+		}
+		decodedStr := string(decodedBytes)
+
+		// 按 ^^ 分割字符串
+		parts := strings.Split(decodedStr, "^^")
+		if len(parts) != 3 {
+			return "", errors.New("image auth config invalid")
+		}
+
+		username := parts[0]
+		password := parts[1]
+		address := parts[2]
+
+		authConfig := registry.AuthConfig{
+			Username:      username,
+			Password:      password,
+			ServerAddress: address,
+		}
+
+		_, err = task.client.RegistryLogin(context.Background(), authConfig)
+		if err != nil {
+			return "", err
+		}
+	}
+
 	pullOptions := image.PullOptions{
 		All: false,
 	}
