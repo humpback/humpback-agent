@@ -2,6 +2,8 @@ package controller
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	v1model "humpback-agent/api/v1/model"
 
 	"github.com/docker/docker/api/types/image"
@@ -82,6 +84,7 @@ func (controller *ImageController) Push(ctx context.Context, request *v1model.Pu
 
 func (controller *ImageController) Pull(ctx context.Context, request *v1model.PullImageRequest) *v1model.ObjectResult {
 
+	authStr := ""
 	if request.UserName != "" && request.Password != "" {
 
 		authConfig := registry.AuthConfig{
@@ -90,15 +93,14 @@ func (controller *ImageController) Pull(ctx context.Context, request *v1model.Pu
 			ServerAddress: request.ServerAddress,
 		}
 
-		_, err := controller.client.RegistryLogin(ctx, authConfig)
-		if err != nil {
-			return v1model.ObjectNotFoundErrorResult(v1model.ImagePullErrorCode, err.Error())
-		}
+		authBytes, _ := json.Marshal(authConfig)
+		authStr = base64.URLEncoding.EncodeToString(authBytes)
 	}
 
 	pullOptions := image.PullOptions{
-		All:      request.All,
-		Platform: request.Platform,
+		All:          request.All,
+		Platform:     request.Platform,
+		RegistryAuth: authStr,
 	}
 
 	out, err := controller.client.ImagePull(context.Background(), request.Image, pullOptions)

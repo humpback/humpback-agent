@@ -3,6 +3,7 @@ package schedule
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -60,6 +61,7 @@ func (task *Task) Execute() {
 
 		newImageId, err := task.pullImage()
 		if err != nil {
+			logrus.Errorf("container %s task [%s] pull image execute error, %v", task.Name, task.Rule, err)
 			task.executing = false
 			return
 		}
@@ -102,6 +104,7 @@ func (task *Task) getImageId() (string, error) {
 
 func (task *Task) pullImage() (string, error) {
 
+	authStr := ""
 	if task.Auth != "" {
 
 		decodedBytes, err := base64.StdEncoding.DecodeString(task.Auth)
@@ -126,14 +129,13 @@ func (task *Task) pullImage() (string, error) {
 			ServerAddress: address,
 		}
 
-		_, err = task.client.RegistryLogin(context.Background(), authConfig)
-		if err != nil {
-			return "", err
-		}
+		authBytes, _ := json.Marshal(authConfig)
+		authStr = base64.URLEncoding.EncodeToString(authBytes)
 	}
 
 	pullOptions := image.PullOptions{
-		All: false,
+		All:          false,
+		RegistryAuth: authStr,
 	}
 
 	out, err := task.client.ImagePull(context.Background(), task.Image, pullOptions)

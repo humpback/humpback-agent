@@ -106,6 +106,7 @@ func ObjectRequestErrorResult(code string, errMsg string) *ObjectResult {
 }
 
 func ObjectNotFoundErrorResult(code string, errMsg string) *ObjectResult {
+	slog.Error("not found error: ", "code", code, "msg", errMsg)
 	return &ObjectResult{
 		Error: NotFoundErrorResult(code, errMsg),
 	}
