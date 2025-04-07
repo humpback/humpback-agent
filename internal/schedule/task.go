@@ -31,6 +31,7 @@ type Task struct {
 }
 
 func NewTask(containerId string, name string, image string, alwaysPull bool, timeout time.Duration, rule string, authStr string, client *client.Client) *Task {
+	logrus.Infof("container %s task [%s] created.", name, rule)
 	return &Task{
 		ContainerId: containerId,
 		Name:        name,
@@ -49,6 +50,8 @@ func (task *Task) Execute() {
 		logrus.Warnf("container %s task [%s] currently executing", task.Name, task.Rule)
 		return
 	}
+
+	logrus.Infof("container %s task [%s] start executing", task.Name, task.Rule)
 
 	task.executing = true
 	reCreate := false
