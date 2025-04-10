@@ -333,14 +333,22 @@ func (controller *ContainerController) Delete(ctx context.Context, request *v1mo
 
 func (controller *ContainerController) Restart(ctx context.Context, request *v1model.RestartContainerRequest) *v1model.ObjectResult {
 	var containerId string
+	var containerName string
 	if err := controller.baseController.WithTimeout(ctx, func(ctx context.Context) error {
 		containerBody, inspectErr := controller.client.ContainerInspect(ctx, request.ContainerId)
 		if inspectErr != nil {
 			return inspectErr
 		}
 		containerId = containerBody.ID
+		containerName = containerBody.Name
 		return controller.client.ContainerRestart(ctx, request.ContainerId, container.StopOptions{})
 	}); err != nil {
+		containerMeta := model.ContainerMeta{
+			ContainerName: containerName,
+			State:         model.ContainerStatusFailed,
+			ErrorMsg:      err.Error(),
+		}
+		controller.BaseController().FailureChan() <- containerMeta
 		return v1model.ObjectInternalErrorResult(v1model.ContainerDeleteErrorCode, err.Error())
 	}
 	return v1model.ResultWithObjectId(containerId)
@@ -348,14 +356,22 @@ func (controller *ContainerController) Restart(ctx context.Context, request *v1m
 
 func (controller *ContainerController) Start(ctx context.Context, request *v1model.StartContainerRequest) *v1model.ObjectResult {
 	var containerId string
+	var containerName string
 	if err := controller.baseController.WithTimeout(ctx, func(ctx context.Context) error {
 		containerBody, inspectErr := controller.client.ContainerInspect(ctx, request.ContainerId)
 		if inspectErr != nil {
 			return inspectErr
 		}
 		containerId = containerBody.ID
+		containerName = containerBody.Name
 		return controller.client.ContainerStart(ctx, request.ContainerId, container.StartOptions{})
 	}); err != nil {
+		containerMeta := model.ContainerMeta{
+			ContainerName: containerName,
+			State:         model.ContainerStatusFailed,
+			ErrorMsg:      err.Error(),
+		}
+		controller.BaseController().FailureChan() <- containerMeta
 		return v1model.ObjectInternalErrorResult(v1model.ContainerDeleteErrorCode, err.Error())
 	}
 	return v1model.ResultWithObjectId(containerId)
@@ -363,14 +379,22 @@ func (controller *ContainerController) Start(ctx context.Context, request *v1mod
 
 func (controller *ContainerController) Stop(ctx context.Context, request *v1model.StopContainerRequest) *v1model.ObjectResult {
 	var containerId string
+	var containerName string
 	if err := controller.baseController.WithTimeout(ctx, func(ctx context.Context) error {
 		containerBody, inspectErr := controller.client.ContainerInspect(ctx, request.ContainerId)
 		if inspectErr != nil {
 			return inspectErr
 		}
 		containerId = containerBody.ID
+		containerName = containerBody.Name
 		return controller.client.ContainerStop(ctx, request.ContainerId, container.StopOptions{})
 	}); err != nil {
+		containerMeta := model.ContainerMeta{
+			ContainerName: containerName,
+			State:         model.ContainerStatusFailed,
+			ErrorMsg:      err.Error(),
+		}
+		controller.BaseController().FailureChan() <- containerMeta
 		return v1model.ObjectInternalErrorResult(v1model.ContainerDeleteErrorCode, err.Error())
 	}
 	return v1model.ResultWithObjectId(containerId)

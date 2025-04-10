@@ -96,6 +96,7 @@ func NewAgentService(ctx context.Context, config *config.AppConfig) (*AgentServi
 			agentService.addToScheduler(container.ContainerId, container.ContainerName, container.Image, container.Labels)
 		}
 	}
+
 	return agentService, nil
 }
 
@@ -266,6 +267,8 @@ func (agentService *AgentService) watchMetaChange() {
 	for meta := range agentService.failureChan {
 		agentService.Lock()
 
+		meta.ContainerName = strings.TrimPrefix(meta.ContainerName, "/")
+
 		slog.Info("receive failure contaier", "containername", meta.ContainerName, "error", meta.ErrorMsg, "state", meta.State)
 
 		c, ok := agentService.failureContainers[meta.ContainerName]
@@ -325,6 +328,10 @@ func (agentService *AgentService) sendHealthRequest(ctx context.Context) error {
 		DockerEngine: *dockerEngineInfo,
 		Containers:   containers,
 	}
+
+	// for _, containerInfo := range containers {
+	// 	slog.Info("report container", "containername", containerInfo.ContainerName, "state", containerInfo.State, "error", containerInfo.ErrorMsg)
+	// }
 
 	return reqclient.PostRequest(agentService.httpClient, fmt.Sprintf("%s/api/health", agentService.config.ServerConfig.Host), payload)
 }
