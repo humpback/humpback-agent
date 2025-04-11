@@ -42,8 +42,8 @@ type ScheduleInfo struct {
 }
 
 type Capabilities struct {
-	CapAdd  *[]string `json:"capAdd"`
-	CapDrop *[]string `json:"capDrop"`
+	CapAdd  []string `json:"capAdd"`
+	CapDrop []string `json:"capDrop"`
 }
 
 type Resources struct {
@@ -64,6 +64,12 @@ var (
 	ServiceVolumeTypeVolume ServiceVolumeType = "volume"
 )
 
+const (
+	ContainerLabelServiceId   = "Humpback-ServiceId"
+	ContainerLabelServiceName = "Humpback-ServiceName"
+	ContainerLabelGroupId     = "Humpback-GroupId"
+)
+
 type ServiceVolume struct {
 	Type     ServiceVolumeType `json:"type"`
 	Target   string            `json:"target"`
@@ -72,16 +78,23 @@ type ServiceVolume struct {
 }
 
 type ContainerMeta struct {
-	Image         string            `json:"image"`
-	AlwaysPull    bool              `json:"alwaysPull"`
-	Command       string            `json:"command"`
-	Envs          []string          `json:"env"`
-	Labels        map[string]string `json:"labels"`
-	Volumes       []*ServiceVolume  `json:"volumes"`
-	Network       *NetworkInfo      `json:"network"`
-	RestartPolicy *RestartPolicy    `json:"restartPolicy"`
-	Capabilities  *Capabilities     `json:"capabilities"`
-	LogConfig     *LogConfig        `json:"logConfig"`
-	Resources     *Resources        `json:"resources"`
-	Privileged    bool              `json:"privileged"`
+	RegistryDomain string            `json:"registryDomain"`
+	Image          string            `json:"image"`
+	AlwaysPull     bool              `json:"alwaysPull"`
+	Command        string            `json:"command"`
+	Envs           []string          `json:"env"`
+	Labels         map[string]string `json:"labels"`
+	Volumes        []*ServiceVolume  `json:"volumes"`
+	Network        *NetworkInfo      `json:"network"`
+	RestartPolicy  *RestartPolicy    `json:"restartPolicy"`
+	Capabilities   *Capabilities     `json:"capabilities"`
+	LogConfig      *LogConfig        `json:"logConfig"`
+	Resources      *Resources        `json:"resources"`
+	Privileged     bool              `json:"privileged"`
+}
+
+type RegistryAuth struct {
+	ServerAddress    string `json:"serverAddress"`
+	RegistryUsername string `json:"registryUsername"`
+	RegistryPassword string `json:"registryPassword"`
 }

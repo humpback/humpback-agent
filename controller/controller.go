@@ -3,15 +3,20 @@ package controller
 import (
 	"context"
 	"fmt"
-	"github.com/docker/docker/client"
-	"github.com/docker/docker/libnetwork/portallocator"
-	"github.com/google/uuid"
 	v1model "humpback-agent/api/v1/model"
 	"humpback-agent/model"
 	"humpback-agent/pkg/utils"
+	"net"
 	"path/filepath"
 	"regexp"
 	"time"
+
+	"github.com/docker/docker/client"
+	"github.com/docker/docker/libnetwork/portallocator"
+	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
+
+	"math/rand/v2"
 )
 
 // 编译正则表达式
@@ -26,6 +31,7 @@ type InternalController interface {
 	BuildVolumesWithConfigNames(configNames map[string]string) (map[string]string, error)
 	ConfigValues(ctx context.Context, configNames []string) (map[string][]byte, error)
 	AllocPort(proto string) (int, error)
+	FailureChan() chan model.ContainerMeta
 }
 
 type ControllerInterface interface {
@@ -43,14 +49,16 @@ type BaseController struct {
 	image                ImageControllerInterface
 	container            ContainerControllerInterface
 	network              NetworkControllerInterface
+	failureChan          chan model.ContainerMeta
 }
 
-func NewController(client *client.Client, getConfigFunc GetConfigValueFunc, volumesRootDirectory string, reqTimeout time.Duration) ControllerInterface {
+func NewController(client *client.Client, getConfigFunc GetConfigValueFunc, volumesRootDirectory string, reqTimeout time.Duration, failureChan chan model.ContainerMeta) ControllerInterface {
 	baseController := &BaseController{
 		client:               client,
 		volumesRootDirectory: volumesRootDirectory,
 		reqTimeout:           reqTimeout,
 		getConfigFunc:        getConfigFunc,
+		failureChan:          failureChan,
 	}
 
 	baseController.image = NewImageController(baseController, client)
@@ -114,7 +122,35 @@ func (controller *BaseController) AllocPort(proto string) (int, error) {
 		proto = "tcp"
 	}
 	pa := portallocator.Get()
-	return pa.RequestPort(nil, proto, 0)
+	begin := pa.Begin
+	end := pa.End
+	retry := 0
+	maxRetry := 5
+	port := 0
+	isFree := false
+
+	for !isFree && retry < maxRetry {
+		port = rand.IntN(end-begin) + begin
+		isFree = isPortFree(port)
+		retry++
+	}
+
+	if !isFree {
+		return 0, fmt.Errorf("no free port found in %d-%d", begin, end)
+	}
+
+	logrus.Infof("Alloc port %d for %s", port, proto)
+	return port, nil
+
+}
+
+func isPortFree(port int) bool {
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	if err != nil {
+		return false
+	}
+	listener.Close()
+	return true
 }
 
 func (controller *BaseController) BuildVolumesWithConfigNames(configNames map[string]string) (map[string]string, error) {
@@ -158,4 +194,8 @@ func (controller *BaseController) Container() ContainerControllerInterface {
 
 func (controller *BaseController) Network() NetworkControllerInterface {
 	return controller.network
+}
+
+func (controller *BaseController) FailureChan() chan model.ContainerMeta {
+	return controller.failureChan
 }

@@ -2,15 +2,18 @@ package controller
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	v1model "humpback-agent/api/v1/model"
 
 	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/errdefs"
 )
 
 type ImageInternalControllerInterface interface {
-	AttemptPull(ctx context.Context, imageId string, alwaysPull bool) *v1model.ObjectResult
+	AttemptPull(ctx context.Context, imageId string, alwaysPull bool, auth v1model.RegistryAuth) *v1model.ObjectResult
 }
 
 type ImageControllerInterface interface {
@@ -39,7 +42,7 @@ func (controller *ImageController) BaseController() ControllerInterface {
 	return controller.baseController
 }
 
-func (controller *ImageController) AttemptPull(ctx context.Context, imageId string, alwaysPull bool) *v1model.ObjectResult {
+func (controller *ImageController) AttemptPull(ctx context.Context, imageId string, alwaysPull bool, auth v1model.RegistryAuth) *v1model.ObjectResult {
 	pullImage := alwaysPull
 	if !pullImage {
 		imageResult := controller.BaseController().Image().Get(ctx, &v1model.GetImageRequest{ImageId: imageId})
@@ -53,7 +56,7 @@ func (controller *ImageController) AttemptPull(ctx context.Context, imageId stri
 	}
 
 	if pullImage { //拉取镜像（如果需要）
-		if ret := controller.BaseController().Image().Pull(ctx, &v1model.PullImageRequest{Image: imageId}); ret.Error != nil {
+		if ret := controller.BaseController().Image().Pull(ctx, &v1model.PullImageRequest{Image: imageId, ServerAddress: auth.ServerAddress, UserName: auth.RegistryUsername, Password: auth.RegistryPassword}); ret.Error != nil {
 			return ret
 		}
 	}
@@ -80,9 +83,24 @@ func (controller *ImageController) Push(ctx context.Context, request *v1model.Pu
 }
 
 func (controller *ImageController) Pull(ctx context.Context, request *v1model.PullImageRequest) *v1model.ObjectResult {
+
+	authStr := ""
+	if request.UserName != "" && request.Password != "" {
+
+		authConfig := registry.AuthConfig{
+			Username:      request.UserName,
+			Password:      request.Password,
+			ServerAddress: request.ServerAddress,
+		}
+
+		authBytes, _ := json.Marshal(authConfig)
+		authStr = base64.URLEncoding.EncodeToString(authBytes)
+	}
+
 	pullOptions := image.PullOptions{
-		All:      request.All,
-		Platform: request.Platform,
+		All:          request.All,
+		Platform:     request.Platform,
+		RegistryAuth: authStr,
 	}
 
 	out, err := controller.client.ImagePull(context.Background(), request.Image, pullOptions)

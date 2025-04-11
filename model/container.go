@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"humpback-agent/pkg/utils"
 	"log/slog"
 	"math"
@@ -62,6 +61,13 @@ type MounteInfo struct {
 	Destination string `json:"Destination"`
 }
 
+type ContainerMeta struct {
+	ContainerName string
+	State         string
+	ErrorMsg      string
+	IsDelete      bool
+}
+
 type ContainerInfo struct {
 	ContainerId   string            `json:"containerId"`
 	ContainerName string            `json:"containerName"`
@@ -78,6 +84,7 @@ type ContainerInfo struct {
 	Created       int64             `json:"created"`
 	Started       int64             `json:"started"`
 	Finished      int64             `json:"finished"`
+	ErrorMsg      string            `json:"errorMsg"`
 }
 
 func ParseContainerInfo(container types.ContainerJSON) *ContainerInfo {
@@ -125,7 +132,7 @@ func ParseContainerInfo(container types.ContainerJSON) *ContainerInfo {
 		Network:       container.HostConfig.NetworkMode.NetworkName(),
 		Env:           container.Config.Env,
 		Mountes:       ParseContainerMountes(container.Mounts),
-		Command:       ParseContainerCommandWithConfig(container.Path, container.Config),
+		Command:       ParseContainerCommandWithConfig(container.Config),
 		Ports:         ParseContainerPortsWithNetworkSettings(container.NetworkSettings),
 		IPAddr:        ParseContainerIPAddrWithNetworkSettings(container.NetworkSettings),
 		Created:       createdTimestamp,
@@ -134,11 +141,15 @@ func ParseContainerInfo(container types.ContainerJSON) *ContainerInfo {
 	}
 }
 
-func ParseContainerCommandWithConfig(execPath string, containerConfig *container.Config) string {
+func ParseContainerCommandWithConfig(containerConfig *container.Config) string {
 	if containerConfig != nil {
-		return fmt.Sprintf("%s %s", execPath, strings.Join(containerConfig.Cmd, " "))
+		if len(containerConfig.Cmd) > 0 {
+			return strings.Join(containerConfig.Cmd, " ")
+		} else if len(containerConfig.Entrypoint) > 0 {
+			return strings.Join(containerConfig.Entrypoint, " ")
+		}
 	}
-	return execPath
+	return ""
 }
 
 func ParseContainerPortsWithNetworkSettings(networkSettings *types.NetworkSettings) []ContainerPort {

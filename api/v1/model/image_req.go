@@ -7,8 +7,11 @@ type GetImageRequest struct {
 type QueryImageRequest struct{}
 type PushImageRequest struct{}
 type PullImageRequest struct {
-	Image    string `json:"image"`
-	All      bool   `json:"all"`
-	Platform string `json:"platform"`
+	Image         string `json:"image"`
+	All           bool   `json:"all"`
+	Platform      string `json:"platform"`
+	ServerAddress string
+	UserName      string
+	Password      string
 }
 type DeleteImageRequest struct{}

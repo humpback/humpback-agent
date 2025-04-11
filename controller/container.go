@@ -2,12 +2,14 @@ package controller
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -99,27 +101,63 @@ func (controller *ContainerController) List(ctx context.Context, request *v1mode
 }
 
 func (controller *ContainerController) Create(ctx context.Context, request *v1model.CreateContainerRequest) *v1model.ObjectResult {
+	result := controller.createInternal(ctx, request)
 
-	// value, _ := json.MarshalIndent(request, "", "    ")
-	// fmt.Printf("%s\n", value)
+	if result.Error != nil {
+		containerMeta := model.ContainerMeta{
+			ContainerName: request.ContainerName,
+			State:         model.ContainerStatusFailed,
+			ErrorMsg:      result.Error.ErrMsg,
+		}
+		controller.BaseController().FailureChan() <- containerMeta
+	}
+
+	return result
+}
+
+func (controller *ContainerController) createInternal(ctx context.Context, request *v1model.CreateContainerRequest) *v1model.ObjectResult {
+
+	value, _ := json.MarshalIndent(request, "", "    ")
+	fmt.Printf("%s\n", value)
+
+	image := filepath.Join(request.RegistryDomain, request.Image)
+	//先尝试处理镜像
+	if pullResult := controller.BaseController().Image().AttemptPull(context.Background(), image, request.AlwaysPull, request.RegistryAuth); pullResult.Error != nil {
+		return v1model.ObjectInternalErrorResult(v1model.ImagePullErrorCode, pullResult.Error.ErrMsg)
+	}
 
 	isJob := false
-	if request.ScheduleInfo != nil && len(request.ScheduleInfo.Rules) > 0 {
+
+	if request.Labels == nil {
+		request.Labels = make(map[string]string)
+	}
+
+	request.Labels[v1model.ContainerLabelServiceId] = request.ServiceId
+	request.Labels[v1model.ContainerLabelGroupId] = request.GroupId
+	request.Labels[v1model.ContainerLabelServiceName] = request.ServiceName
+
+	if request.ScheduleInfo != nil && (len(request.ScheduleInfo.Rules) > 0 || request.ManualExec) {
 		isJob = true
 		var jobRules string
 		if len(request.ScheduleInfo.Rules) > 0 {
 			jobRules = strings.Join(request.ScheduleInfo.Rules, ";")
+		} else {
+			jobRules = "Manual"
 		}
-		if request.Labels == nil {
-			request.Labels = make(map[string]string)
-		}
+
 		request.Labels[schedule.HumpbackJobRulesLabel] = jobRules
 		request.Labels[schedule.HumpbackJobAlwaysPullLabel] = strconv.FormatBool(request.AlwaysPull)
 		request.Labels[schedule.HumpbackJobMaxTimeoutLabel] = request.ScheduleInfo.Timeout
+
+		if request.RegistryAuth.RegistryUsername != "" && request.RegistryAuth.RegistryPassword != "" {
+			combined := strings.Join([]string{request.RegistryAuth.RegistryUsername, request.RegistryAuth.RegistryPassword, request.RegistryAuth.ServerAddress}, "^^")
+			encoded := base64.StdEncoding.EncodeToString([]byte(combined))
+			request.Labels[schedule.HumpbackJobImageAuth] = encoded
+		}
 	}
 
 	containerConfig := &container.Config{
-		Image:  request.Image,
+		Image:  image,
 		Env:    request.Envs,
 		Labels: request.Labels,
 	}
@@ -133,13 +171,13 @@ func (controller *ContainerController) Create(ctx context.Context, request *v1mo
 	}
 
 	if request.Capabilities != nil {
-		capAdd := *request.Capabilities.CapAdd
-		if capAdd != nil && len(capAdd) > 0 {
+		capAdd := request.Capabilities.CapAdd
+		if len(capAdd) > 0 {
 			hostConfig.CapAdd = capAdd
 		}
 
-		capDrop := *request.Capabilities.CapDrop
-		if capDrop != nil && len(capDrop) > 0 {
+		capDrop := request.Capabilities.CapDrop
+		if len(capDrop) > 0 {
 			hostConfig.CapDrop = capDrop
 		}
 	}
@@ -154,13 +192,21 @@ func (controller *ContainerController) Create(ctx context.Context, request *v1mo
 	if request.Resources != nil {
 		hostConfig.Resources = container.Resources{}
 		if request.Resources.Memory > 0 {
-			hostConfig.Resources.Memory = int64(request.Resources.Memory)
+			mLimit := int64(request.Resources.Memory * 1024 * 1024)
+			if mLimit < 6*1024*1024 {
+				mLimit = 6 * 1024 * 1024
+			}
+			hostConfig.Resources.Memory = mLimit
 		}
 		if request.Resources.MemoryReservation > 0 {
-			hostConfig.Resources.MemoryReservation = int64(request.Resources.MemoryReservation)
+			hostConfig.Resources.MemoryReservation = int64(request.Resources.MemoryReservation * 1024 * 1024)
+		}
+		if hostConfig.Resources.Memory < hostConfig.Resources.MemoryReservation && hostConfig.Resources.Memory != 0 {
+			hostConfig.Resources.Memory = hostConfig.Resources.MemoryReservation
 		}
 		if request.Resources.MaxCpuUsage > 0 {
-			hostConfig.Resources.NanoCPUs = int64(request.Resources.MaxCpuUsage)
+			cpuLimit := int64(request.Resources.MaxCpuUsage * 1000000000 / 100)
+			hostConfig.Resources.NanoCPUs = cpuLimit
 		}
 	}
 
@@ -172,8 +218,11 @@ func (controller *ContainerController) Create(ctx context.Context, request *v1mo
 			maxRetryCount = 0
 		}
 		hostConfig.RestartPolicy = container.RestartPolicy{
-			Name:              container.RestartPolicyMode(restartPolicyModeName),
-			MaximumRetryCount: maxRetryCount,
+			Name: container.RestartPolicyMode(restartPolicyModeName),
+		}
+
+		if restartPolicyModeName == v1model.RestartPolicyModeOnFail {
+			hostConfig.RestartPolicy.MaximumRetryCount = maxRetryCount
 		}
 	}
 
@@ -205,31 +254,6 @@ func (controller *ContainerController) Create(ctx context.Context, request *v1mo
 		} else if request.Network.Mode == v1model.NetworkModeBridge { // 桥接, 配置 PortBindings
 			hostConfig.NetworkMode = container.NetworkMode(request.Network.Mode)
 			containerConfig.Hostname = hostname
-			portBindings := nat.PortMap{}
-			if request.Network != nil && len(request.Network.Ports) > 0 {
-				containerConfig.ExposedPorts = make(nat.PortSet)
-				for _, bindPort := range request.Network.Ports {
-					proto := strings.ToLower(bindPort.Protocol)
-					if proto != "tcp" && proto != "udp" {
-						proto = "tcp" // 默认使用 TCP
-					}
-					port, err := nat.NewPort(proto, strconv.Itoa(int(bindPort.ContainerPort)))
-					if err != nil {
-						return v1model.ObjectInternalErrorResult(v1model.ContainerCreateErrorCode, err.Error())
-					}
-					hostPort := int(bindPort.HostPort)
-					if hostPort == 0 {
-						if hostPort, err = controller.BaseController().AllocPort(proto); err != nil {
-							return v1model.ObjectInternalErrorResult(v1model.ContainerCreateErrorCode, err.Error())
-						}
-					}
-					containerConfig.ExposedPorts[port] = struct{}{}
-					portBindings[port] = []nat.PortBinding{{HostPort: strconv.Itoa(hostPort)}}
-				}
-				hostConfig.PortBindings = portBindings
-			} else {
-				hostConfig.PublishAllPorts = true //若请求中没设置端口, 则自动暴露镜像Dockerfile中的所有端口
-			}
 			networkConfig = &network.NetworkingConfig{
 				EndpointsConfig: map[string]*network.EndpointSettings{
 					"bridge": {
@@ -238,16 +262,37 @@ func (controller *ContainerController) Create(ctx context.Context, request *v1mo
 				},
 			}
 		}
+
+		portBindings := nat.PortMap{}
+		if len(request.Network.Ports) > 0 {
+			containerConfig.ExposedPorts = make(nat.PortSet)
+			for _, bindPort := range request.Network.Ports {
+				proto := strings.ToLower(bindPort.Protocol)
+				if proto != "tcp" && proto != "udp" {
+					proto = "tcp" // 默认使用 TCP
+				}
+				port, err := nat.NewPort(proto, strconv.Itoa(int(bindPort.ContainerPort)))
+				if err != nil {
+					return v1model.ObjectInternalErrorResult(v1model.ContainerCreateErrorCode, err.Error())
+				}
+				hostPort := int(bindPort.HostPort)
+				if hostPort == 0 {
+					if hostPort, err = controller.BaseController().AllocPort(proto); err != nil {
+						return v1model.ObjectInternalErrorResult(v1model.ContainerCreateErrorCode, err.Error())
+					}
+				}
+				containerConfig.ExposedPorts[port] = struct{}{}
+				portBindings[port] = []nat.PortBinding{{HostPort: strconv.Itoa(hostPort)}}
+			}
+			hostConfig.PortBindings = portBindings
+		} else {
+			hostConfig.PublishAllPorts = true //若请求中没设置端口, 则自动暴露镜像Dockerfile中的所有端口
+		}
 	}
 
 	//处理卷配置绑定
 	if err := controller.buildHostConfigVolumesWithRequest(request.Volumes, hostConfig); err != nil {
 		return v1model.ObjectInternalErrorResult(v1model.ContainerCreateErrorCode, err.Error())
-	}
-
-	//先尝试处理镜像
-	if pullResult := controller.BaseController().Image().AttemptPull(context.Background(), request.Image, request.AlwaysPull); pullResult.Error != nil {
-		return v1model.ObjectInternalErrorResult(v1model.ImagePullErrorCode, pullResult.Error.ErrMsg)
 	}
 
 	var containerInfo container.CreateResponse
@@ -278,7 +323,6 @@ func (controller *ContainerController) Delete(ctx context.Context, request *v1mo
 	if err := controller.baseController.WithTimeout(ctx, func(ctx context.Context) error {
 		containerBody, inspectErr := controller.client.ContainerInspect(ctx, request.ContainerId)
 		if inspectErr != nil {
-
 			return inspectErr
 		}
 		containerId = containerBody.ID
@@ -291,14 +335,22 @@ func (controller *ContainerController) Delete(ctx context.Context, request *v1mo
 
 func (controller *ContainerController) Restart(ctx context.Context, request *v1model.RestartContainerRequest) *v1model.ObjectResult {
 	var containerId string
+	var containerName string
 	if err := controller.baseController.WithTimeout(ctx, func(ctx context.Context) error {
 		containerBody, inspectErr := controller.client.ContainerInspect(ctx, request.ContainerId)
 		if inspectErr != nil {
 			return inspectErr
 		}
 		containerId = containerBody.ID
+		containerName = containerBody.Name
 		return controller.client.ContainerRestart(ctx, request.ContainerId, container.StopOptions{})
 	}); err != nil {
+		containerMeta := model.ContainerMeta{
+			ContainerName: containerName,
+			State:         model.ContainerStatusFailed,
+			ErrorMsg:      err.Error(),
+		}
+		controller.BaseController().FailureChan() <- containerMeta
 		return v1model.ObjectInternalErrorResult(v1model.ContainerDeleteErrorCode, err.Error())
 	}
 	return v1model.ResultWithObjectId(containerId)
@@ -306,14 +358,22 @@ func (controller *ContainerController) Restart(ctx context.Context, request *v1m
 
 func (controller *ContainerController) Start(ctx context.Context, request *v1model.StartContainerRequest) *v1model.ObjectResult {
 	var containerId string
+	var containerName string
 	if err := controller.baseController.WithTimeout(ctx, func(ctx context.Context) error {
 		containerBody, inspectErr := controller.client.ContainerInspect(ctx, request.ContainerId)
 		if inspectErr != nil {
 			return inspectErr
 		}
 		containerId = containerBody.ID
+		containerName = containerBody.Name
 		return controller.client.ContainerStart(ctx, request.ContainerId, container.StartOptions{})
 	}); err != nil {
+		containerMeta := model.ContainerMeta{
+			ContainerName: containerName,
+			State:         model.ContainerStatusFailed,
+			ErrorMsg:      err.Error(),
+		}
+		controller.BaseController().FailureChan() <- containerMeta
 		return v1model.ObjectInternalErrorResult(v1model.ContainerDeleteErrorCode, err.Error())
 	}
 	return v1model.ResultWithObjectId(containerId)
@@ -321,14 +381,22 @@ func (controller *ContainerController) Start(ctx context.Context, request *v1mod
 
 func (controller *ContainerController) Stop(ctx context.Context, request *v1model.StopContainerRequest) *v1model.ObjectResult {
 	var containerId string
+	var containerName string
 	if err := controller.baseController.WithTimeout(ctx, func(ctx context.Context) error {
 		containerBody, inspectErr := controller.client.ContainerInspect(ctx, request.ContainerId)
 		if inspectErr != nil {
 			return inspectErr
 		}
 		containerId = containerBody.ID
+		containerName = containerBody.Name
 		return controller.client.ContainerStop(ctx, request.ContainerId, container.StopOptions{})
 	}); err != nil {
+		containerMeta := model.ContainerMeta{
+			ContainerName: containerName,
+			State:         model.ContainerStatusFailed,
+			ErrorMsg:      err.Error(),
+		}
+		controller.BaseController().FailureChan() <- containerMeta
 		return v1model.ObjectInternalErrorResult(v1model.ContainerDeleteErrorCode, err.Error())
 	}
 	return v1model.ResultWithObjectId(containerId)
