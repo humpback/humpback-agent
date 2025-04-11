@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -119,8 +120,9 @@ func (controller *ContainerController) createInternal(ctx context.Context, reque
 	value, _ := json.MarshalIndent(request, "", "    ")
 	fmt.Printf("%s\n", value)
 
+	image := filepath.Join(request.RegistryDomain, request.Image)
 	//先尝试处理镜像
-	if pullResult := controller.BaseController().Image().AttemptPull(context.Background(), request.Image, request.AlwaysPull, request.RegistryAuth); pullResult.Error != nil {
+	if pullResult := controller.BaseController().Image().AttemptPull(context.Background(), image, request.AlwaysPull, request.RegistryAuth); pullResult.Error != nil {
 		return v1model.ObjectInternalErrorResult(v1model.ImagePullErrorCode, pullResult.Error.ErrMsg)
 	}
 
@@ -155,7 +157,7 @@ func (controller *ContainerController) createInternal(ctx context.Context, reque
 	}
 
 	containerConfig := &container.Config{
-		Image:  request.Image,
+		Image:  image,
 		Env:    request.Envs,
 		Labels: request.Labels,
 	}

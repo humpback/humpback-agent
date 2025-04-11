@@ -78,18 +78,19 @@ type ServiceVolume struct {
 }
 
 type ContainerMeta struct {
-	Image         string            `json:"image"`
-	AlwaysPull    bool              `json:"alwaysPull"`
-	Command       string            `json:"command"`
-	Envs          []string          `json:"env"`
-	Labels        map[string]string `json:"labels"`
-	Volumes       []*ServiceVolume  `json:"volumes"`
-	Network       *NetworkInfo      `json:"network"`
-	RestartPolicy *RestartPolicy    `json:"restartPolicy"`
-	Capabilities  *Capabilities     `json:"capabilities"`
-	LogConfig     *LogConfig        `json:"logConfig"`
-	Resources     *Resources        `json:"resources"`
-	Privileged    bool              `json:"privileged"`
+	RegistryDomain string            `json:"registryDomain"`
+	Image          string            `json:"image"`
+	AlwaysPull     bool              `json:"alwaysPull"`
+	Command        string            `json:"command"`
+	Envs           []string          `json:"env"`
+	Labels         map[string]string `json:"labels"`
+	Volumes        []*ServiceVolume  `json:"volumes"`
+	Network        *NetworkInfo      `json:"network"`
+	RestartPolicy  *RestartPolicy    `json:"restartPolicy"`
+	Capabilities   *Capabilities     `json:"capabilities"`
+	LogConfig      *LogConfig        `json:"logConfig"`
+	Resources      *Resources        `json:"resources"`
+	Privileged     bool              `json:"privileged"`
 }
 
 type RegistryAuth struct {
