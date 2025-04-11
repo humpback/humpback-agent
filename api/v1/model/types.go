@@ -42,8 +42,8 @@ type ScheduleInfo struct {
 }
 
 type Capabilities struct {
-	CapAdd  *[]string `json:"capAdd"`
-	CapDrop *[]string `json:"capDrop"`
+	CapAdd  []string `json:"capAdd"`
+	CapDrop []string `json:"capDrop"`
 }
 
 type Resources struct {
@@ -62,6 +62,12 @@ type ServiceVolumeType string
 var (
 	ServiceVolumeTypeBind   ServiceVolumeType = "bind"
 	ServiceVolumeTypeVolume ServiceVolumeType = "volume"
+)
+
+const (
+	ContainerLabelServiceId   = "Humpback-ServiceId"
+	ContainerLabelServiceName = "Humpback-ServiceName"
+	ContainerLabelGroupId     = "Humpback-GroupId"
 )
 
 type ServiceVolume struct {
@@ -84,4 +90,10 @@ type ContainerMeta struct {
 	LogConfig     *LogConfig        `json:"logConfig"`
 	Resources     *Resources        `json:"resources"`
 	Privileged    bool              `json:"privileged"`
+}
+
+type RegistryAuth struct {
+	ServerAddress    string `json:"serverAddress"`
+	RegistryUsername string `json:"registryUsername"`
+	RegistryPassword string `json:"registryPassword"`
 }

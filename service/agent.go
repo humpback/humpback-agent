@@ -26,12 +26,14 @@ import (
 
 type AgentService struct {
 	sync.RWMutex
-	config     *config.AppConfig
-	apiServer  *api.APIServer
-	httpClient *http.Client
-	scheduler  schedule.TaskSchedulerInterface
-	controller controller.ControllerInterface
-	containers map[string]*model.ContainerInfo
+	config            *config.AppConfig
+	apiServer         *api.APIServer
+	httpClient        *http.Client
+	scheduler         schedule.TaskSchedulerInterface
+	controller        controller.ControllerInterface
+	failureChan       chan model.ContainerMeta
+	containers        map[string]*model.ContainerInfo
+	failureContainers map[string]*model.ContainerInfo
 }
 
 func NewAgentService(ctx context.Context, config *config.AppConfig) (*AgentService, error) {
@@ -41,7 +43,9 @@ func NewAgentService(ctx context.Context, config *config.AppConfig) (*AgentServi
 		httpClient: &http.Client{
 			Timeout: config.Health.Timeout,
 		},
-		containers: make(map[string]*model.ContainerInfo),
+		containers:        make(map[string]*model.ContainerInfo),
+		failureContainers: make(map[string]*model.ContainerInfo),
+		failureChan:       make(chan model.ContainerMeta, 10),
 	}
 	//构建Docker-client
 	dockerClient, err := docker.BuildDockerClient(config.DockerConfig)
@@ -55,6 +59,7 @@ func NewAgentService(ctx context.Context, config *config.AppConfig) (*AgentServi
 		agentService.sendConfigValuesRequest,
 		config.VolumesConfig.RootDirectory,
 		config.DockerTimeoutOpts.Request,
+		agentService.failureChan,
 	)
 
 	apiServer, err := api.NewAPIServer(appController, config.APIConfig)
@@ -78,6 +83,9 @@ func NewAgentService(ctx context.Context, config *config.AppConfig) (*AgentServi
 
 	//启动心跳
 	go agentService.heartbeatLoop()
+
+	go agentService.watchMetaChange()
+
 	//启动docker事件监听
 	go agentService.watchDockerEvents(ctx, dockerClient)
 	//启动定时任务调度器
@@ -88,6 +96,7 @@ func NewAgentService(ctx context.Context, config *config.AppConfig) (*AgentServi
 			agentService.addToScheduler(container.ContainerId, container.ContainerName, container.Image, container.Labels)
 		}
 	}
+
 	return agentService, nil
 }
 
@@ -162,6 +171,9 @@ func (agentService *AgentService) handleDockerEvent(message events.Message) {
 				logrus.Errorf("Docker create container %s event, %v", message.Actor.ID, err)
 			}
 			if containerInfo != nil {
+
+				needReport := true
+
 				if message.Action == "create" {
 					if _, ret := containerInfo.Labels[schedule.HumpbackJobRulesLabel]; ret { //创建了一个job定时容器, 交给定时调度器
 						agentService.addToScheduler(containerInfo.ContainerId, containerInfo.ContainerName, containerInfo.Image, containerInfo.Labels)
@@ -174,16 +186,19 @@ func (agentService *AgentService) handleDockerEvent(message events.Message) {
 							}
 						}
 						agentService.Unlock()
+					} else {
+						// 非定时容器的create，不需要汇报心跳
+						needReport = false
 					}
 				}
 
-				needReport := true
 				agentService.Lock()
 				old, ok := agentService.containers[containerInfo.ContainerId]
 				if ok && old.State == containerInfo.State {
 					needReport = false
 				}
 				agentService.containers[containerInfo.ContainerId] = containerInfo
+
 				agentService.Unlock()
 
 				if needReport {
@@ -215,11 +230,12 @@ func (agentService *AgentService) handleDockerEvent(message events.Message) {
 }
 
 func (agentService *AgentService) addToScheduler(containerId string, containerName string, containerImage string, containerLabels map[string]string) error {
-	if value, ret := containerLabels[schedule.HumpbackJobRulesLabel]; ret {
+	if value, ret := containerLabels[schedule.HumpbackJobRulesLabel]; ret && value != "Manual" {
 		var (
 			err        error
 			timeout    time.Duration
 			alwaysPull bool
+			authStr    string
 		)
 		rules := strings.Split(value, ";")
 		if value, ret = containerLabels[schedule.HumpbackJobMaxTimeoutLabel]; ret {
@@ -233,13 +249,49 @@ func (agentService *AgentService) addToScheduler(containerId string, containerNa
 				return err
 			}
 		}
-		return agentService.scheduler.AddContainer(containerId, containerName, containerImage, alwaysPull, rules, timeout)
+
+		if value, ret = containerLabels[schedule.HumpbackJobImageAuth]; ret {
+			authStr = value
+		}
+
+		return agentService.scheduler.AddContainer(containerId, containerName, containerImage, alwaysPull, rules, authStr, timeout)
 	}
 	return nil
 }
 
 func (agentService *AgentService) removeFromScheduler(containerId string) error {
 	return agentService.scheduler.RemoveContainer(containerId)
+}
+
+func (agentService *AgentService) watchMetaChange() {
+	for meta := range agentService.failureChan {
+		agentService.Lock()
+
+		meta.ContainerName = strings.TrimPrefix(meta.ContainerName, "/")
+
+		slog.Info("receive failure contaier", "containername", meta.ContainerName, "error", meta.ErrorMsg, "state", meta.State)
+
+		c, ok := agentService.failureContainers[meta.ContainerName]
+
+		if !ok {
+			if !meta.IsDelete {
+				agentService.failureContainers[meta.ContainerName] = &model.ContainerInfo{
+					ContainerName: meta.ContainerName,
+					State:         meta.State,
+					ErrorMsg:      meta.ErrorMsg,
+				}
+			}
+		} else {
+			if meta.IsDelete {
+				delete(agentService.failureContainers, meta.ContainerName)
+			} else {
+				c.State = meta.State
+				c.ErrorMsg = meta.ErrorMsg
+			}
+		}
+
+		agentService.Unlock()
+	}
 }
 
 func (agentService *AgentService) sendHealthRequest(ctx context.Context) error {
@@ -252,10 +304,23 @@ func (agentService *AgentService) sendHealthRequest(ctx context.Context) error {
 	//本地容器信息
 	containers := []*model.ContainerInfo{}
 	agentService.RLock()
+	reportNames := make(map[string]string)
 	for _, containerInfo := range agentService.containers {
-
+		if fc, ok := agentService.failureContainers[containerInfo.ContainerName]; ok {
+			containerInfo.State = fc.State
+			containerInfo.ErrorMsg = fc.ErrorMsg
+		}
 		containers = append(containers, containerInfo)
+		reportNames[containerInfo.ContainerName] = ""
 	}
+
+	for _, containerInfo := range agentService.failureContainers {
+		if _, ok := reportNames[containerInfo.ContainerName]; !ok {
+			slog.Info("report failure container", "containername", containerInfo.ContainerName, "state", containerInfo.State)
+			containers = append(containers, containerInfo)
+		}
+	}
+
 	agentService.RUnlock()
 
 	payload := &model.HostHealthRequest{
@@ -263,6 +328,11 @@ func (agentService *AgentService) sendHealthRequest(ctx context.Context) error {
 		DockerEngine: *dockerEngineInfo,
 		Containers:   containers,
 	}
+
+	// for _, containerInfo := range containers {
+	// 	slog.Info("report container", "containername", containerInfo.ContainerName, "state", containerInfo.State, "error", containerInfo.ErrorMsg)
+	// }
+
 	return reqclient.PostRequest(agentService.httpClient, fmt.Sprintf("%s/api/health", agentService.config.ServerConfig.Host), payload)
 }
 

@@ -2,9 +2,15 @@ package schedule
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/docker/docker/api/types/network"
+	"strings"
 	"time"
+
+	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/api/types/registry"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
@@ -21,9 +27,11 @@ type Task struct {
 	Rule        string
 	client      *client.Client
 	executing   bool
+	Auth        string
 }
 
-func NewTask(containerId string, name string, image string, alwaysPull bool, timeout time.Duration, rule string, client *client.Client) *Task {
+func NewTask(containerId string, name string, image string, alwaysPull bool, timeout time.Duration, rule string, authStr string, client *client.Client) *Task {
+	logrus.Infof("container %s task [%s] created.", name, rule)
 	return &Task{
 		ContainerId: containerId,
 		Name:        name,
@@ -33,6 +41,7 @@ func NewTask(containerId string, name string, image string, alwaysPull bool, tim
 		Rule:        rule,
 		client:      client,
 		executing:   false,
+		Auth:        authStr,
 	}
 }
 
@@ -41,6 +50,8 @@ func (task *Task) Execute() {
 		logrus.Warnf("container %s task [%s] currently executing", task.Name, task.Rule)
 		return
 	}
+
+	logrus.Infof("container %s task [%s] start executing", task.Name, task.Rule)
 
 	task.executing = true
 	reCreate := false
@@ -53,6 +64,7 @@ func (task *Task) Execute() {
 
 		newImageId, err := task.pullImage()
 		if err != nil {
+			logrus.Errorf("container %s task [%s] pull image execute error, %v", task.Name, task.Rule, err)
 			task.executing = false
 			return
 		}
@@ -94,8 +106,39 @@ func (task *Task) getImageId() (string, error) {
 }
 
 func (task *Task) pullImage() (string, error) {
+
+	authStr := ""
+	if task.Auth != "" {
+
+		decodedBytes, err := base64.StdEncoding.DecodeString(task.Auth)
+		if err != nil {
+			return "", err
+		}
+		decodedStr := string(decodedBytes)
+
+		// 按 ^^ 分割字符串
+		parts := strings.Split(decodedStr, "^^")
+		if len(parts) != 3 {
+			return "", errors.New("image auth config invalid")
+		}
+
+		username := parts[0]
+		password := parts[1]
+		address := parts[2]
+
+		authConfig := registry.AuthConfig{
+			Username:      username,
+			Password:      password,
+			ServerAddress: address,
+		}
+
+		authBytes, _ := json.Marshal(authConfig)
+		authStr = base64.URLEncoding.EncodeToString(authBytes)
+	}
+
 	pullOptions := image.PullOptions{
-		All: false,
+		All:          false,
+		RegistryAuth: authStr,
 	}
 
 	out, err := task.client.ImagePull(context.Background(), task.Image, pullOptions)
