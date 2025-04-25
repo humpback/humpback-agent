@@ -127,7 +127,7 @@ func (agentService *AgentService) loadDockerContainers(ctx context.Context) erro
 		}
 		containerInfo := model.ParseContainerInfo(result.Object.(types.ContainerJSON))
 		agentService.containers[container.ID] = containerInfo
-		slog.Info("[loadDockerContainers] add to cache.", "ContainerID", container.ID, "Name", containerInfo.ContainerName, "Labels", containerInfo.Labels)
+		slog.Info("[loadDockerContainers] add to cache.", "ContainerID", container.ID, "Name", containerInfo.ContainerName)
 	}
 	agentService.Unlock()
 	return nil
