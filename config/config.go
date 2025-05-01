@@ -1,169 +1,128 @@
 package config
 
-import "github.com/astaxie/beego"
-import "github.com/humpback/common/models"
-import "github.com/humpback/gounits/network"
-
 import (
-	"fmt"
-	"net"
+	"errors"
+	"gopkg.in/yaml.v3"
 	"os"
-	"strconv"
-	"strings"
+	"time"
 )
 
-var config *models.Config
+var (
+	ErrAPIConfigInvalid    = errors.New("api config invalid")
+	ErrDockerConfigInvalid = errors.New("docker config invalid")
 
-// Init - Load config info
-func Init() {
-	envEndpoint := os.Getenv("DOCKER_ENDPOINT")
-	if envEndpoint == "" {
-		envEndpoint = beego.AppConfig.DefaultString("DOCKER_ENDPOINT", "unix:///var/run/docker.sock")
+	defaultLogConfig = &LoggerConfig{
+		LogFile:    "",
+		Level:      "info",
+		Format:     "json",
+		MaxSize:    20971520,
+		MaxBackups: 3,
+		MaxAge:     7,
+		Compress:   false,
 	}
 
-	envAPIVersion := os.Getenv("DOCKER_API_VERSION")
-	if envAPIVersion == "" {
-		envAPIVersion = beego.AppConfig.DefaultString("DOCKER_API_VERSION", "v1.20")
-	}
+	defaultVolumesPath = "/var/lib/humpback/volumes"
+)
 
-	envRegistryAddr := os.Getenv("DOCKER_REGISTRY_ADDRESS")
-	if envRegistryAddr == "" {
-		envRegistryAddr = beego.AppConfig.DefaultString("DOCKER_REGISTRY_ADDRESS", "docker.neg")
-	}
-
-	envNodeHTTPAddr := os.Getenv("DOCKER_NODE_HTTPADDR")
-	if envNodeHTTPAddr == "" {
-		envNodeHTTPAddr = beego.AppConfig.DefaultString("DOCKER_NODE_HTTPADDR", "0.0.0.0:8500")
-	}
-
-	envContainerPortsRange := os.Getenv("DOCKER_CONTAINER_PORTS_RANGE")
-	if envContainerPortsRange == "" {
-		envContainerPortsRange = beego.AppConfig.DefaultString("DOCKER_CONTAINER_PORTS_RANGE", "0-0")
-	}
-
-	var envEnableBuildImg bool
-	if tempEnableBuildImg := os.Getenv("ENABLE_BUILD_IMAGE"); tempEnableBuildImg != "" {
-		if tempEnableBuildImg == "1" || tempEnableBuildImg == "true" {
-			envEnableBuildImg = true
-		}
-	} else {
-		envEnableBuildImg = beego.AppConfig.DefaultBool("ENABLE_BUILD_IMAGE", false)
-	}
-
-	envComposePath := os.Getenv("DOCKER_COMPOSE_PATH")
-	if envComposePath == "" {
-		envComposePath = beego.AppConfig.DefaultString("DOCKER_COMPOSE_PATH", "./compose_files")
-	}
-
-	var envComposePackageMaxSize int64
-	packageMaxSize := os.Getenv("DOCKER_COMPOSE_PACKAGE_MAXSIZE")
-	if packageMaxSize == "" {
-		envComposePackageMaxSize = beego.AppConfig.DefaultInt64("DOCKER_COMPOSE_PACKAGE_MAXSIZE", 67108864)
-	} else {
-		value, err := strconv.ParseInt(packageMaxSize, 10, 64)
-		if err != nil {
-			envComposePackageMaxSize = 67108864
-		} else {
-			envComposePackageMaxSize = value
-		}
-	}
-
-	envClusterEnabled := false
-	enabled := os.Getenv("DOCKER_CLUSTER_ENABLED")
-	if enabled == "" {
-		envClusterEnabled = beego.AppConfig.DefaultBool("DOCKER_CLUSTER_ENABLED", false)
-	} else {
-		var err error
-		if envClusterEnabled, err = strconv.ParseBool(enabled); err != nil {
-			envClusterEnabled = false
-		}
-	}
-
-	envClusterURIs := os.Getenv("DOCKER_CLUSTER_URIS")
-	if envClusterURIs == "" {
-		envClusterURIs = beego.AppConfig.DefaultString("DOCKER_CLUSTER_URIS", "zk://127.0.0.1:2181")
-	}
-
-	envClusterName := os.Getenv("DOCKER_CLUSTER_NAME")
-	if envClusterName == "" {
-		envClusterName = beego.AppConfig.DefaultString("DOCKER_CLUSTER_NAME", "humpback/center")
-	}
-
-	envClusterHeartBeat := os.Getenv("DOCKER_CLUSTER_HEARTBEAT")
-	if envClusterHeartBeat == "" {
-		envClusterHeartBeat = beego.AppConfig.DefaultString("DOCKER_CLUSTER_HEARTBEAT", "10s")
-	}
-
-	envClusterTTL := os.Getenv("DOCKER_CLUSTER_TTL")
-	if envClusterTTL == "" {
-		envClusterTTL = beego.AppConfig.DefaultString("DOCKER_CLUSTER_TTL", "35s")
-	}
-
-	var logLevel int
-	if envLogLevel := os.Getenv("LOG_LEVEL"); envLogLevel != "" {
-		logLevel, _ = strconv.Atoi(envLogLevel)
-	} else {
-		logLevel = beego.AppConfig.DefaultInt("LOG_LEVEL", 3)
-	}
-
-	config = &models.Config{
-		DockerEndPoint:              envEndpoint,
-		DockerAPIVersion:            envAPIVersion,
-		DockerRegistryAddress:       envRegistryAddr,
-		EnableBuildImage:            envEnableBuildImg,
-		DockerComposePath:           envComposePath,
-		DockerComposePackageMaxSize: envComposePackageMaxSize,
-		DockerNodeHTTPAddr:          envNodeHTTPAddr,
-		DockerContainerPortsRange:   envContainerPortsRange,
-		DockerClusterEnabled:        envClusterEnabled,
-		DockerClusterURIs:           envClusterURIs,
-		DockerClusterName:           envClusterName,
-		DockerClusterHeartBeat:      envClusterHeartBeat,
-		DockerClusterTTL:            envClusterTTL,
-		LogLevel:                    logLevel,
-	}
+type APIConfig struct {
+	Bind        string   `json:"bind" yaml:"bind" env:"HUMPBACK_AGENT_API_BIND"`
+	Mode        string   `json:"mode" yaml:"mode" env:"HUMPBACK_AGENT_API_MODE"`
+	Middlewares []string `json:"middlewares" yaml:"middlewares"`
+	Versions    []string `json:"versions" yaml:"versions"`
+	AccessToken string   `json:"accessToken" yaml:"accessToken"`
 }
 
-// GetConfig - return config struct
-func GetConfig() models.Config {
-	return *config
+type LoggerConfig struct {
+	LogFile    string `json:"logFile" yaml:"logFile"`
+	Level      string `json:"level" yaml:"level"`
+	Format     string `json:"format" yaml:"format"`
+	MaxSize    int    `json:"maxSize" yaml:"maxSize"`
+	MaxAge     int    `json:"maxAge" yaml:"maxAge"`
+	MaxBackups int    `json:"maxBackups" yaml:"maxBackups"`
+	Compress   bool   `json:"compress" yaml:"compress"`
 }
 
-// SetVersion - set app version
-func SetVersion(version string) {
-	config.AppVersion = version
+type DockerTimeoutOpts struct {
+	Connection time.Duration `json:"connection" yaml:"connection"`
+	Request    time.Duration `json:"request" yaml:"request"`
 }
 
-// GetNodeHTTPAddrIPPort - return local agent httpaddr info
-func GetNodeHTTPAddrIPPort() (string, int, error) {
+type DockerTLSOpts struct {
+	Enabled            bool   `json:"enabled" yaml:"enabled"`
+	CAPath             string `json:"caPath" yaml:"caPath"`
+	CertPath           string `json:"certPath" yaml:"certPath"`
+	KeyPath            string `json:"keyPath" yaml:"keyPath"`
+	InsecureSkipVerify bool   `json:"insecureSkipVerify" yaml:"insecureSkipVerify"`
+}
 
-	httpAddr := strings.TrimSpace(config.DockerNodeHTTPAddr)
-	if strings.Index(httpAddr, ":") < 0 {
-		httpAddr = httpAddr + ":"
-	}
+type DockerRegistryOpts struct {
+	Default  string `json:"default" yaml:"default"`
+	UserName string `json:"userName" yaml:"userName"`
+	Password string `json:"password" yaml:"password"`
+}
 
-	pAddrStr := strings.SplitN(httpAddr, ":", 2)
-	if pAddrStr[1] == "" {
-		httpAddr = httpAddr + "8500"
-	}
+type DockerConfig struct {
+	Host               string             `json:"host" yaml:"host" env:"HUMPBACK_DOCKER_HOST"`
+	Version            string             `json:"version" yaml:"version" env:"HUMPBACK_DOCKER_VERSION"`
+	AutoNegotiate      bool               `json:"autoNegotiate" yaml:"autoNegotiate" env:"HUMPBACK_DOCKER_AUTO_NEGOTIATE"`
+	DockerTimeoutOpts  DockerTimeoutOpts  `json:"timeout" yaml:"timeout"`
+	DockerTLSOpts      DockerTLSOpts      `json:"tls" yaml:"tls"`
+	DockerRegistryOpts DockerRegistryOpts `json:"registry" yaml:"registry"`
+}
 
-	strHost, strPort, err := net.SplitHostPort(httpAddr)
+type ServerHealthConfig struct {
+	Interval time.Duration `json:"interval" yaml:"interval" env:"HUMPBACK_SERVER_HEALTH_INTERVAL"`
+	Timeout  time.Duration `json:"timeout" yaml:"timeout" env:"HUMPBACK_SERVER_HEALTH_TIMEOUT"`
+}
+
+type ServerConfig struct {
+	Host   string             `json:"host" yaml:"host" env:"HUMPBACK_SERVER_HOST"`
+	Health ServerHealthConfig `json:"health" yaml:"health"`
+}
+
+type VolumesConfig struct {
+	RootDirectory string `json:"rootDirectory" yaml:"rootDirectory" env:"HUMPBACK_VOLUMES_ROOT_DIRECTORY"`
+}
+
+type AppConfig struct {
+	*APIConfig     `json:"api" yaml:"api"`
+	*ServerConfig  `json:"server" yaml:"server"`
+	*VolumesConfig `json:"volumes" yaml:"volumes"`
+	*DockerConfig  `json:"docker" yaml:"docker"`
+	*LoggerConfig  `json:"logger" yaml:"logger"`
+}
+
+func NewAppConfig(configPath string) (*AppConfig, error) {
+	data, err := os.ReadFile(configPath)
 	if err != nil {
-		return "", 0, err
+		return nil, err
 	}
 
-	if strHost == "" || strHost == "0.0.0.0" {
-		strHost = network.GetDefaultIP()
+	appConfig := AppConfig{}
+	if err = yaml.Unmarshal(data, &appConfig); err != nil {
+		return nil, err
 	}
 
-	ip := net.ParseIP(strHost)
-	if ip == nil {
-		return "", 0, fmt.Errorf("httpAddr ip invalid")
+	if err = ParseConfigFromEnv(&appConfig); err != nil {
+		return nil, err
 	}
 
-	port, err := strconv.Atoi(strPort)
-	if err != nil || port > 65535 || port <= 0 {
-		return "", 0, fmt.Errorf("httpAddr port invalid")
+	if appConfig.APIConfig == nil {
+		return nil, ErrAPIConfigInvalid
 	}
-	return ip.String(), port, nil
+
+	if appConfig.VolumesConfig == nil || appConfig.VolumesConfig.RootDirectory == "" {
+		appConfig.VolumesConfig = &VolumesConfig{
+			RootDirectory: defaultVolumesPath,
+		}
+	}
+
+	if appConfig.DockerConfig == nil {
+		return nil, ErrDockerConfigInvalid
+	}
+
+	if appConfig.LoggerConfig == nil {
+		appConfig.LoggerConfig = defaultLogConfig
+	}
+	return &appConfig, nil
 }

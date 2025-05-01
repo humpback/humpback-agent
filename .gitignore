@@ -23,3 +23,10 @@ _testmain.go
 *.test
 *.prof
 vendor/
+**/.idea/**
+.idea
+humpback-agent
+humpback-agent.exe
+humpback_agent
+humpback_agent.exe
+humpback_agent_linux

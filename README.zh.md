@@ -7,26 +7,26 @@
 
 ![Humpback logo](/assets/logo.png)
 
-The service executor of Humpback, which provides container operations and cron execution for Humpback.
+Humpback的服务执行程序，为Humpback提供容器操作和Cron执行。
 
-## language
+## 语言
 
 - [English](README.md)
 - [中文](README.zh.md)
 
-## Feature
+## 特征
 
-- Heartbeat debriefing.
-- Container operations。
-- Support for cron.
+- 心跳汇报。
+- 容器操作。
+- 支持Cron.
 
-## Getting Started
+## 快速开始
 
 * [Humpback Guides](https://humpback.github.io/humpback)
 
-## Installing
+## 安装
 
-By default, Humpback Agent will expose a API server over port `8018` for receiving Humpback Server call.
+Humpback Agent默认会监听8018端口用于接收Humpback Server的调用。
 
 ```bash
 
@@ -44,14 +44,14 @@ docker run -d \
 
 ```
 
-Please replace `{server-address}` to the Humbpack Server IP.
+请注意：将{server-address}替换为部署Humpback Server的真实IP地址。
 
-## Usage
+## 使用
 
-After the installation is completed, add the current machine IP address to the **Nodes** page, and you can schedule it after the status changes to **Healthy**.
+安装完成后，将当前机器IP地址添加到**机器管理**页面，待状态变为**在线**后即可进行调度使用。
 
-![Nodes](/assets/nodes.png)
+![Nodes](/assets/nodes-zh.png)
 
-## Licence
+## 许可证
 
-Humpback Server is licensed under the [Apache Licence 2.0](http://www.apache.org/licenses/LICENSE-2.0.html).   
+Humpback 根据 [Apache Licence 2.0](http://www.apache.org/licenses/LICENSE-2.0.html) 获得许可。

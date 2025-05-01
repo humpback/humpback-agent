@@ -1,0 +1,46 @@
+#API
+api:
+  bind: 0.0.0.0:8018
+  mode: debug
+  middlewares: ["cors", "recovery", "logger"]
+  versions: ["/v1"]
+  accessToken: af1901ff0a01cdb1
+
+# 服务器配置
+server:
+  host: http://172.30.112.1:8801
+  health:
+    interval: 30s
+    timeout: 15s
+
+volumes:
+  rootDirectory: /opt/app/docker
+
+#Docker客户端配置
+docker:
+  host: unix:///var/run/docker.sock    # 或者 "tcp://localhost:2375"
+  version: "1.41"                      # 指定 Docker API 版本
+  autoNegotiate: true                 # 是否启用API自动协商
+  timeout:
+    connection: 10s  # 连接超时
+    request: 120s    # 请求超时
+  tls:
+    enabled: false
+    caPath: "/path/to/ca.pem"
+    certPath: "/path/to/cert.pem"
+    keyPath: "/path/to/key.pem"
+    insecureSkipVerify: false
+  registry:
+    default: "registry.example.com"    # 默认镜像仓库
+    userName: "user"
+    password: "password"
+
+#日志配置
+logger:
+    logFile: null
+    level: info
+    format: json
+    maxSize: 20971520  # 20 MB
+    maxBackups: 3      # 保留的旧日志文件数量
+    maxAge: 7          # 保留天数
+    compress: false    # 是否压缩旧日志
