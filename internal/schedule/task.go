@@ -73,6 +73,13 @@ func (task *Task) Execute() {
 			reCreate = true
 		}
 	}
+	if task.Timeout <= 0 {
+		if err := task.startContainer(context.Background(), reCreate); err != nil {
+			logrus.Errorf("container %s task [%s] start container execute error, %v", task.Name, task.Rule, err)
+		}
+		task.executing = false
+		return
+	}
 
 	// 设置任务的最大执行时间（超时时间）
 	ctx, cancel := context.WithTimeout(context.Background(), task.Timeout)

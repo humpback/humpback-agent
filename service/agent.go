@@ -3,6 +3,13 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"net/http"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
 	"humpback-agent/api"
 	v1model "humpback-agent/api/v1/model"
 	"humpback-agent/config"
@@ -11,12 +18,6 @@ import (
 	"humpback-agent/internal/docker"
 	"humpback-agent/internal/schedule"
 	"humpback-agent/model"
-	"log/slog"
-	"net/http"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/events"
@@ -117,6 +118,7 @@ func (agentService *AgentService) loadDockerContainers(ctx context.Context) erro
 	}
 
 	containers := result.Object.([]types.Container)
+	slog.Info("[loadDockerContainers] contianer len.", "Length", len(containers))
 	agentService.Lock()
 	for _, container := range containers {
 		result = agentService.controller.Container().Get(ctx, &v1model.GetContainerRequest{ContainerId: container.ID})
@@ -125,6 +127,7 @@ func (agentService *AgentService) loadDockerContainers(ctx context.Context) erro
 		}
 		containerInfo := model.ParseContainerInfo(result.Object.(types.ContainerJSON))
 		agentService.containers[container.ID] = containerInfo
+		slog.Info("[loadDockerContainers] add to cache.", "ContainerID", container.ID, "Name", containerInfo.ContainerName)
 	}
 	agentService.Unlock()
 	return nil
@@ -238,13 +241,13 @@ func (agentService *AgentService) addToScheduler(containerId string, containerNa
 			authStr    string
 		)
 		rules := strings.Split(value, ";")
-		if value, ret = containerLabels[schedule.HumpbackJobMaxTimeoutLabel]; ret {
+		if value, ret = containerLabels[schedule.HumpbackJobMaxTimeoutLabel]; ret && value != "" {
 			if timeout, err = time.ParseDuration(value); err != nil {
 				return err
 			}
 		}
 
-		if value, ret = containerLabels[schedule.HumpbackJobAlwaysPullLabel]; ret {
+		if value, ret = containerLabels[schedule.HumpbackJobAlwaysPullLabel]; ret && value != "" {
 			if alwaysPull, err = strconv.ParseBool(value); err != nil {
 				return err
 			}
