@@ -1,11 +1,14 @@
 package api
 
 import (
-	"github.com/sirupsen/logrus"
 	"humpback-agent/api/factory"
 	"humpback-agent/config"
 	"humpback-agent/controller"
+	"log/slog"
 	"net/http"
+	"sync/atomic"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
@@ -23,6 +26,10 @@ type Router struct {
 	handlers map[string]any
 }
 
+type TokenService struct {
+	token atomic.Value
+}
+
 func engineMode(modeConfig string) string {
 	mode := "debug"
 	if modeConfig == "release" {
@@ -35,7 +42,35 @@ func engineMode(modeConfig string) string {
 	return mode
 }
 
-func NewRouter(controller controller.ControllerInterface, config *config.APIConfig) IRouter {
+func tokenAuthMiddleware(c *gin.Context) {
+
+	token := c.GetHeader("Authorization")
+	if token == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing token"})
+		c.Abort()
+		return
+	}
+
+	// 验证Bearer token格式
+	if len(token) < 7 || token[:7] != "Bearer " {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+		c.Abort()
+		return
+	}
+
+	tokenString := token[7:]
+
+	ts := c.MustGet("tokenService").(*TokenService)
+	if ts.token.Load().(string) != tokenString {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+		c.Abort()
+		return
+	}
+
+	c.Next()
+}
+
+func NewRouter(controller controller.ControllerInterface, config *config.APIConfig, token string, tokenChan chan string) IRouter {
 	gin.SetMode(engineMode(config.Mode))
 	engine := gin.New()
 	if gin.IsDebugging() {
@@ -43,6 +78,23 @@ func NewRouter(controller controller.ControllerInterface, config *config.APIConf
 	}
 	middlewares := Middlewares(config.Middlewares...)
 	engine.Use(middlewares...)
+
+	tokenService := &TokenService{}
+	tokenService.token.Store(token)
+
+	go func() {
+		for newToken := range tokenChan {
+			slog.Info("[API] Update token", "newToken", newToken)
+			tokenService.token.Store(newToken)
+		}
+	}()
+
+	engine.Use(func(c *gin.Context) {
+		c.Set("tokenService", tokenService)
+		c.Next()
+	})
+	engine.Use(tokenAuthMiddleware)
+
 	engineHandlers := map[string]any{}
 	for _, version := range config.Versions {
 		routerHandler, err := factory.HandlerConstruct(version, controller)

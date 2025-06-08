@@ -9,6 +9,7 @@ api:
 # 服务器配置
 server:
   host: http://172.30.112.1:8801
+  registerToken: xyz
   health:
     interval: 30s
     timeout: 15s

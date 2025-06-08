@@ -2,9 +2,10 @@ package config
 
 import (
 	"errors"
-	"gopkg.in/yaml.v3"
 	"os"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -76,8 +77,9 @@ type ServerHealthConfig struct {
 }
 
 type ServerConfig struct {
-	Host   string             `json:"host" yaml:"host" env:"HUMPBACK_SERVER_HOST"`
-	Health ServerHealthConfig `json:"health" yaml:"health"`
+	Host          string             `json:"host" yaml:"host" env:"HUMPBACK_SERVER_HOST"`
+	RegisterToken string             `json:"registerToken" yaml:"registerToken" env:"HUMPBACK_SERVER_REGISTER_TOKEN"`
+	Health        ServerHealthConfig `json:"health" yaml:"health"`
 }
 
 type VolumesConfig struct {
