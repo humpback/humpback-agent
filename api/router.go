@@ -84,7 +84,7 @@ func NewRouter(controller controller.ControllerInterface, config *config.APIConf
 
 	go func() {
 		for newToken := range tokenChan {
-			slog.Info("[API] Update token", "newToken", newToken)
+			slog.Info("[API] Update token")
 			tokenService.token.Store(newToken)
 		}
 	}()

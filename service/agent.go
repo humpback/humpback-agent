@@ -356,8 +356,9 @@ func (agentService *AgentService) sendHealthRequest(ctx context.Context) error {
 	// 	slog.Info("report container", "containername", containerInfo.ContainerName, "state", containerInfo.State, "error", containerInfo.ErrorMsg)
 	// }
 
-	token, err := reqclient.PostRequest(agentService.httpClient, fmt.Sprintf("%s/api/health", agentService.config.ServerConfig.Host), payload, agentService.token)
+	token, err := reqclient.PostRequest(agentService.httpClient, fmt.Sprintf("https://%s/api/health", agentService.config.ServerConfig.Host), payload, agentService.token)
 	if err == nil && token != "" {
+		slog.Info("new token received")
 		agentService.token = token
 		agentService.tokenChan <- token // 更新token
 	}
@@ -367,7 +368,7 @@ func (agentService *AgentService) sendHealthRequest(ctx context.Context) error {
 func (agentService *AgentService) sendConfigValuesRequest(configNames []string) (map[string][]byte, error) {
 	configPair := map[string][]byte{}
 	for _, configName := range configNames {
-		data, err := reqclient.GetRequest(agentService.httpClient, fmt.Sprintf("%s/api/config/%s", agentService.config.ServerConfig.Host, configName), agentService.token)
+		data, err := reqclient.GetRequest(agentService.httpClient, fmt.Sprintf("https://%s/api/config/%s", agentService.config.ServerConfig.Host, configName), agentService.token)
 		if err != nil {
 			return nil, err
 		}

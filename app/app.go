@@ -35,7 +35,7 @@ func loadConfig(configPath string) (*config.AppConfig, error) {
 	logrus.Infof("API Bind: %s", appConfig.APIConfig.Bind)
 	logrus.Infof("API Versions: %v", appConfig.APIConfig.Versions)
 	logrus.Infof("API Middlewares: %v", appConfig.APIConfig.Middlewares)
-	logrus.Infof("API Access Token: %s", appConfig.APIConfig.AccessToken)
+	// logrus.Infof("API Access Token: %s", appConfig.APIConfig.AccessToken)
 	logrus.Infof("Docker Host: %s", appConfig.DockerConfig.Host)
 	logrus.Infof("Docker Version: %s", appConfig.DockerConfig.Version)
 	logrus.Infof("Docker AutoNegotiate: %v", appConfig.DockerConfig.AutoNegotiate)
@@ -112,7 +112,6 @@ func Bootstrap(ctx context.Context) {
 
 // RegisterWithMaster 向Master注册并获取证书
 func RegisterWithMaster(appConfig *config.AppConfig) (*model.CertificateBundle, string, error) {
-	// 创建HTTP客户端
 	client := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{

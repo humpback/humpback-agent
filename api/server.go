@@ -52,12 +52,11 @@ func (server *APIServer) Startup(ctx context.Context) error {
 	var err error
 	errCh := make(chan error)
 	go func(errCh chan<- error) {
-		var e error
 		// if server.tlsConfig != nil {
 		// 	logger.INFO("[API] server https TLS enabled.", server.svc.Addr)
 		// 	e = server.svc.ListenAndServeTLS(server.tlsConfig.ServerCert, server.tlsConfig.ServerKey)
 		// } else {
-		e = server.svc.ListenAndServe()
+		e := server.svc.ListenAndServeTLS("", "")
 		//}
 		if !server.shutdown {
 			errCh <- e

@@ -30,7 +30,7 @@ type APIConfig struct {
 	Mode        string   `json:"mode" yaml:"mode" env:"HUMPBACK_AGENT_API_MODE"`
 	Middlewares []string `json:"middlewares" yaml:"middlewares"`
 	Versions    []string `json:"versions" yaml:"versions"`
-	AccessToken string   `json:"accessToken" yaml:"accessToken"`
+	// AccessToken string   `json:"accessToken" yaml:"accessToken"`
 }
 
 type LoggerConfig struct {
