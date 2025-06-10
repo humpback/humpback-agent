@@ -2,11 +2,14 @@ package api
 
 import (
 	"context"
-	"github.com/sirupsen/logrus"
+	"crypto/tls"
 	"humpback-agent/config"
 	"humpback-agent/controller"
+	"humpback-agent/model"
 	"net/http"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 type APIServer struct {
@@ -15,23 +18,9 @@ type APIServer struct {
 	shutdown bool
 }
 
-func NewAPIServer(controller controller.ControllerInterface, config *config.APIConfig) (*APIServer, error) {
-	// var tlsConfig *tls.Config
-	// if config.TLSConfig != nil {
-	// 	certPool := x509.NewCertPool()
-	// 	caCert, err := ioutil.ReadFile(config.TLSConfig.CaCert)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	certPool.AppendCertsFromPEM(caCert)
-	// 	tlsConfig = &tls.Config{
-	// 		ClientCAs:  certPool,
-	// 		ClientAuth: tls.RequireAndVerifyClientCert,
-	// 		NextProtos: []string{"http/1.1"},
-	// 	}
-	// }
+func NewAPIServer(controller controller.ControllerInterface, config *config.APIConfig, certBundle *model.CertificateBundle, token string, tokenChan chan string) (*APIServer, error) {
 
-	router := NewRouter(controller, config)
+	router := NewRouter(controller, config, token, tokenChan)
 	server := &APIServer{
 		svc: &http.Server{
 			Addr:         config.Bind,
@@ -39,10 +28,19 @@ func NewAPIServer(controller controller.ControllerInterface, config *config.APIC
 			WriteTimeout: 90 * time.Second,
 			ReadTimeout:  30 * time.Second,
 			IdleTimeout:  60 * time.Second,
-			// TLSConfig:    tlsConfig,
 		},
-		//tlsConfig: config.TLSConfig,
 		shutdown: false,
+	}
+
+	if certBundle != nil {
+		cert, _ := tls.X509KeyPair(certBundle.CertPEM, certBundle.KeyPEM)
+		config := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			RootCAs:      certBundle.CertPool,
+			ClientAuth:   tls.RequireAndVerifyClientCert,
+			ClientCAs:    certBundle.CertPool,
+		}
+		server.svc.TLSConfig = config
 	}
 	return server, nil
 }
@@ -54,12 +52,11 @@ func (server *APIServer) Startup(ctx context.Context) error {
 	var err error
 	errCh := make(chan error)
 	go func(errCh chan<- error) {
-		var e error
 		// if server.tlsConfig != nil {
 		// 	logger.INFO("[API] server https TLS enabled.", server.svc.Addr)
 		// 	e = server.svc.ListenAndServeTLS(server.tlsConfig.ServerCert, server.tlsConfig.ServerKey)
 		// } else {
-		e = server.svc.ListenAndServe()
+		e := server.svc.ListenAndServeTLS("", "")
 		//}
 		if !server.shutdown {
 			errCh <- e

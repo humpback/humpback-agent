@@ -2,9 +2,10 @@ package config
 
 import (
 	"errors"
-	"gopkg.in/yaml.v3"
 	"os"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -29,7 +30,7 @@ type APIConfig struct {
 	Mode        string   `json:"mode" yaml:"mode" env:"HUMPBACK_AGENT_API_MODE"`
 	Middlewares []string `json:"middlewares" yaml:"middlewares"`
 	Versions    []string `json:"versions" yaml:"versions"`
-	AccessToken string   `json:"accessToken" yaml:"accessToken"`
+	// AccessToken string   `json:"accessToken" yaml:"accessToken"`
 }
 
 type LoggerConfig struct {
@@ -76,8 +77,9 @@ type ServerHealthConfig struct {
 }
 
 type ServerConfig struct {
-	Host   string             `json:"host" yaml:"host" env:"HUMPBACK_SERVER_HOST"`
-	Health ServerHealthConfig `json:"health" yaml:"health"`
+	Host          string             `json:"host" yaml:"host" env:"HUMPBACK_SERVER_HOST"`
+	RegisterToken string             `json:"registerToken" yaml:"registerToken" env:"HUMPBACK_SERVER_REGISTER_TOKEN"`
+	Health        ServerHealthConfig `json:"health" yaml:"health"`
 }
 
 type VolumesConfig struct {
