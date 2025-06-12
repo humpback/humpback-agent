@@ -1,8 +1,8 @@
 FROM alpine:latest
 
-RUN  mkdir -p /workspace
+RUN mkdir -p /workspace/config
 
-COPY ./config.yaml /workspace
+COPY ./config/*.yaml /workspace/config
 
 COPY ./humpback-agent /workspace/
 
