@@ -1,6 +1,5 @@
 version: 1.0.0
 node:
-  hostIP: 0.0.0.0
   port: 8018
   registerToken: ""
   healthInterval: 30s

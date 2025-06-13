@@ -2,13 +2,15 @@ package main
 
 import (
 	"context"
-	"humpback-agent/app"
-	"humpback-agent/config"
-	"humpback-agent/pkg/glog"
 	"log/slog"
 	"os"
 	"os/signal"
 	"time"
+
+	"humpback-agent/app"
+	"humpback-agent/config"
+	"humpback-agent/pkg/glog"
+	"humpback-agent/pkg/utils"
 )
 
 func init() {
@@ -17,7 +19,7 @@ func init() {
 		panic(err)
 	}
 	slog.Info("[Config] Init completed.")
-	//utils.PrintJson(config.Config())
+	utils.PrintJson(config.Config())
 }
 
 func main() {

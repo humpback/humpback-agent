@@ -4,12 +4,12 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"humpback-agent/api/handle"
-	"humpback-agent/config"
-	"humpback-agent/types"
 	"log/slog"
 	"net/http"
 	"os"
+
+	"humpback-agent/config"
+	"humpback-agent/types"
 
 	"github.com/gin-gonic/gin"
 )
@@ -29,7 +29,7 @@ func InitRouter() *Router {
 
 func (api *Router) Start(certBundle *types.CertificateBundle) {
 	go func() {
-		listeningAddress := fmt.Sprintf("%s:%d", config.NodeArgs().HostIP, config.NodeArgs().Port)
+		listeningAddress := fmt.Sprintf("0.0.0.0:%d", config.NodeArgs().Port)
 		slog.Info("[Api] Listening...", "Address", listeningAddress)
 		api.httpSrv = &http.Server{
 			Addr:    listeningAddress,
@@ -66,7 +66,7 @@ func (api *Router) setMiddleware() {
 func (api *Router) setRoute() {
 	var routes = map[string]map[string][]any{
 		"/api": {
-			"/task": {handle.RouteTask},
+			"/task": {handleRouteTask},
 		},
 	}
 

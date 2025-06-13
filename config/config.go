@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/caarlos0/env/v11"
@@ -31,19 +32,21 @@ type DockerConfig struct {
 }
 
 type NodeConfig struct {
-	HostIP         string        `json:"hostIp" yaml:"hostIp" env:"IP"`
-	Port           int           `json:"port" yaml:"port" env:"PORT"`
+	Port           uint64        `json:"port" yaml:"port" env:"PORT"`
 	RegisterToken  string        `json:"registerToken" yaml:"registerToken" env:"REGISTER_TOKEN"`
 	HealthInterval time.Duration `json:"healthInterval" yaml:"healthInterval" env:"HEALTH_INTERVAL"`
 }
 
 func InitConfig() error {
+	configuration = new(config)
 	if err := readConfigFile("./config/config.yaml"); err != nil {
 		return err
 	}
 	if err := env.Parse(configuration); err != nil {
 		return err
 	}
+	configuration.Server.Address = strings.TrimPrefix(strings.ToLower(configuration.Server.Address), "http://")
+	configuration.Server.Address = strings.TrimPrefix(strings.ToLower(configuration.Server.Address), "https://")
 	return nil
 }
 
