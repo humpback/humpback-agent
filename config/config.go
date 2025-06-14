@@ -76,3 +76,7 @@ func ServerArgs() ServerConfig {
 func DockerArgs() DockerConfig {
 	return configuration.Docker
 }
+
+func ParseServerAddress(url string) string {
+	return fmt.Sprintf("https://%s%s", ServerArgs().Address, url)
+}

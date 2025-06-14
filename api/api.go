@@ -9,25 +9,26 @@ import (
 	"os"
 
 	"humpback-agent/config"
-	"humpback-agent/types"
+	"humpback-agent/interval/controller"
 
 	"github.com/gin-gonic/gin"
 )
 
 type Router struct {
-	engine  *gin.Engine
-	httpSrv *http.Server
+	engine     *gin.Engine
+	httpSrv    *http.Server
+	controller *controller.Controller
 }
 
-func InitRouter() *Router {
+func InitRouter(ctl *controller.Controller) *Router {
 	gin.SetMode(gin.ReleaseMode)
-	r := &Router{engine: gin.New()}
+	r := &Router{engine: gin.New(), controller: ctl}
 	r.setMiddleware()
 	r.setRoute()
 	return r
 }
 
-func (api *Router) Start(certBundle *types.CertificateBundle) {
+func (api *Router) Start(tlsFunc func() *tls.Config) {
 	go func() {
 		listeningAddress := fmt.Sprintf("0.0.0.0:%d", config.NodeArgs().Port)
 		slog.Info("[Api] Listening...", "Address", listeningAddress)
@@ -36,13 +37,11 @@ func (api *Router) Start(certBundle *types.CertificateBundle) {
 			Handler: api.engine,
 		}
 		var err error
-		if certBundle != nil {
-			cert, _ := tls.X509KeyPair(certBundle.CertPEM, certBundle.KeyPEM)
+		if tlsFunc != nil {
 			api.httpSrv.TLSConfig = &tls.Config{
-				Certificates: []tls.Certificate{cert},
-				RootCAs:      certBundle.CertPool,
-				ClientAuth:   tls.NoClientCert,
-				ClientCAs:    certBundle.CertPool,
+				GetConfigForClient: func(info *tls.ClientHelloInfo) (*tls.Config, error) {
+					return tlsFunc(), nil
+				},
 			}
 			err = api.httpSrv.ListenAndServeTLS("", "")
 		} else {

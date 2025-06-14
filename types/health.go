@@ -2,15 +2,17 @@ package types
 
 type HealthInfo struct {
 	Host       HostInfo         `json:"host"`
-	Docker     Dockernfo        `json:"docker"`
+	Docker     DockerInfo       `json:"docker"`
 	Containers []*ContainerInfo `json:"containers"`
 }
 
 type HostInfo struct {
+	HostId        string     `json:"hostId"`
 	Hostname      string     `json:"hostName"`
 	IpAddress     []string   `json:"ipAddress"`
 	Port          uint64     `json:"port"`
-	OS            string     `json:"os"`
+	OSType        string     `json:"osType"`
+	Platform      string     `json:"platform"`
 	KernelVersion string     `json:"kernelVersion"`
 	Cpu           CpuInfo    `json:"cpu"`
 	Memory        MemoryInfo `json:"memory"`
@@ -29,7 +31,7 @@ type MemoryInfo struct {
 	Percent float64 `json:"percent"`
 }
 
-type Dockernfo struct {
+type DockerInfo struct {
 	Id             string   `json:"id"`
 	Name           string   `json:"name"`
 	Version        string   `json:"version"`
@@ -80,4 +82,8 @@ type ContainerIP struct {
 	EndpointID string `json:"endpointID"`
 	Gateway    string `json:"gateway"`
 	IPAddress  string `json:"ipAddress"`
+}
+
+type HealthRespInfo struct {
+	Token string `json:"token"`
 }

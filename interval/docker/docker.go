@@ -1,10 +1,6 @@
 package docker
 
 import (
-	"context"
-
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/system"
 	"github.com/docker/docker/client"
 	"humpback-agent/config"
 )
@@ -24,16 +20,4 @@ func NewDockerDriver() (*DockerDriver, error) {
 
 func (d *DockerDriver) Close() error {
 	return d.client.Close()
-}
-
-func (d *DockerDriver) DockerInfo() (system.Info, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), config.DockerArgs().Timeout)
-	defer cancel()
-	return d.client.Info(ctx)
-}
-
-func (d *DockerDriver) DockerVersion() (types.Version, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), config.DockerArgs().Timeout)
-	defer cancel()
-	return d.client.ServerVersion(ctx)
 }

@@ -4,15 +4,27 @@ import (
 	"context"
 
 	"humpback-agent/api"
+	"humpback-agent/interval/controller"
 )
 
 type App struct {
-	api    *api.Router
-	stopCh chan struct{}
+	api        *api.Router
+	controller *controller.Controller
+	stopCh     chan struct{}
 }
 
 func InitApp() (*App, error) {
-	return nil, nil
+	stopCh := make(chan struct{})
+	ctl, err := controller.NewController(stopCh)
+	if err != nil {
+		return nil, err
+	}
+
+	return &App{
+		api:        api.InitRouter(ctl),
+		controller: ctl,
+		stopCh:     stopCh,
+	}, nil
 }
 
 func (a *App) Startup() error {
@@ -20,5 +32,6 @@ func (a *App) Startup() error {
 }
 
 func (a *App) Close(c context.Context) error {
+	close(a.stopCh)
 	return nil
 }

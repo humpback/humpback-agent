@@ -1,4 +1,4 @@
-package server
+package httpx
 
 import (
 	"crypto/tls"
@@ -17,22 +17,24 @@ type HttpxClient interface {
 }
 
 type httpxClient struct {
-	client    *reqv3.Client
-	token     string
-	tlsConfig *tls.Config
+	client *reqv3.Client
+	token  string
 }
 
-func NewHttpXClient(tlsConfig *tls.Config, token string) HttpxClient {
+func NewHttpXClient(tlsFunc func() *tls.Config, token string) HttpxClient {
 	httpC := reqv3.C().SetTimeout(20 * time.Second)
-	if tlsConfig != nil {
-		httpC.TLSClientConfig = tlsConfig
+	if tlsFunc != nil {
+		httpC.TLSClientConfig = &tls.Config{
+			GetConfigForClient: func(*tls.ClientHelloInfo) (*tls.Config, error) {
+				return tlsFunc(), nil
+			},
+		}
 	} else {
 		httpC.TLSClientConfig.InsecureSkipVerify = true
 	}
 	return &httpxClient{
-		client:    httpC,
-		token:     token,
-		tlsConfig: tlsConfig,
+		client: httpC,
+		token:  token,
 	}
 }
 

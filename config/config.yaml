@@ -4,7 +4,7 @@ node:
   registerToken: ""
   healthInterval: 30s
 server:
-  Address: 0.0.0.0:8801
+  address: 0.0.0.0:8801
   timeout: 60s
 docker:
   host: unix:///var/run/docker.sock
