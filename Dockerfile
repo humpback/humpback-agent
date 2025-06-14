@@ -8,4 +8,8 @@ COPY ./humpback-agent /workspace/
 
 WORKDIR /workspace
 
+ARG VERSION
+
+ENV VERSION=$VERSION
+
 CMD ["./humpback-agent"]

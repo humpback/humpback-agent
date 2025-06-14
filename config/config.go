@@ -13,7 +13,7 @@ import (
 var configuration *config
 
 type config struct {
-	Version string       `json:"version" yaml:"version"`
+	Version string       `json:"version" yaml:"version" env:"VERSION"`
 	Node    NodeConfig   `json:"node" yaml:"node"`
 	Server  ServerConfig `json:"server" yaml:"server"`
 	Docker  DockerConfig `json:"docker" yaml:"docker"`

@@ -1,6 +1,7 @@
 package types
 
 type HealthInfo struct {
+	Version    string           `json:"version"`
 	Host       HostInfo         `json:"host"`
 	Docker     DockerInfo       `json:"docker"`
 	Containers []*ContainerInfo `json:"containers"`
