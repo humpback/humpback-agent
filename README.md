@@ -37,7 +37,7 @@ docker run -d \
   --privileged \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /var/lib/docker:/var/lib/docker \
-  -e HUMPBACK_AGENT_API_BIND=0.0.0.0:8018 \
+  -e HUMPBACK_SERVER_REGISTER_TOKEN={token} \
   -e HUMPBACK_SERVER_HOST={server-address}:8101 \
   -e HUMPBACK_VOLUMES_ROOT_DIRECTORY=/var/lib/docker \
   humpbacks/humpback-agent
