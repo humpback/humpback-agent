@@ -1,9 +1,12 @@
 package model
 
 import (
+	"crypto/ecdsa"
+	"crypto/x509"
 	"fmt"
 	"os"
 	"runtime"
+	"strconv"
 
 	"humpback-agent/pkg/utils"
 )
@@ -38,8 +41,23 @@ type HostHealthRequest struct {
 	Containers   []*ContainerInfo `json:"containers"`
 }
 
-func GetHostInfo(bind string) HostInfo {
+type CertificateBundle struct {
+	Cert     *x509.Certificate
+	PrivKey  *ecdsa.PrivateKey
+	CertPool *x509.CertPool // CA证书池
+	CertPEM  []byte         // PEM编码的证书
+	KeyPEM   []byte         // PEM编码的私钥
+}
+
+func GetHostInfo(hostIpStr, portStr string) HostInfo {
 	hostname, _ := os.Hostname()
+	port, _ := strconv.Atoi(portStr)
+	var hostIps []string
+	if hostIpStr != "" {
+		hostIps = []string{hostIpStr}
+	} else {
+		hostIps = utils.HostIPs()
+	}
 	osInfo := fmt.Sprintf("%s %s", runtime.GOOS, runtime.GOARCH)
 	kernelVersion := utils.HostKernelVersion()
 	totalCPU, usedCPU, cpuUsage := utils.HostCPU()
@@ -54,7 +72,7 @@ func GetHostInfo(bind string) HostInfo {
 		TotalMemory:   totalMEM,
 		UsedMemory:    usedMEM,
 		MemoryUsage:   memUsage,
-		HostIPs:       utils.HostIPs(),
-		HostPort:      utils.BindPort(bind),
+		HostIPs:       hostIps,
+		HostPort:      port,
 	}
 }

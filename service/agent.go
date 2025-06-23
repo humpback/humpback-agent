@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -33,11 +34,13 @@ type AgentService struct {
 	scheduler         schedule.TaskSchedulerInterface
 	controller        controller.ControllerInterface
 	failureChan       chan model.ContainerMeta
+	tokenChan         chan string
+	token             string
 	containers        map[string]*model.ContainerInfo
 	failureContainers map[string]*model.ContainerInfo
 }
 
-func NewAgentService(ctx context.Context, config *config.AppConfig) (*AgentService, error) {
+func NewAgentService(ctx context.Context, config *config.AppConfig, certBundle *model.CertificateBundle, token string) (*AgentService, error) {
 	//构建Agent服务
 	agentService := &AgentService{
 		config: config,
@@ -47,7 +50,24 @@ func NewAgentService(ctx context.Context, config *config.AppConfig) (*AgentServi
 		containers:        make(map[string]*model.ContainerInfo),
 		failureContainers: make(map[string]*model.ContainerInfo),
 		failureChan:       make(chan model.ContainerMeta, 10),
+		tokenChan:         make(chan string, 1), // 用于接收token更新
+		token:             token,
 	}
+
+	if certBundle != nil {
+		cert, _ := tls.X509KeyPair(certBundle.CertPEM, certBundle.KeyPEM)
+
+		config := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			RootCAs:      certBundle.CertPool,
+			ClientAuth:   tls.NoClientCert,
+			ClientCAs:    certBundle.CertPool,
+		}
+		agentService.httpClient.Transport = &http.Transport{
+			TLSClientConfig: config,
+		}
+	}
+
 	//构建Docker-client
 	dockerClient, err := docker.BuildDockerClient(config.DockerConfig)
 	if err != nil {
@@ -63,7 +83,7 @@ func NewAgentService(ctx context.Context, config *config.AppConfig) (*AgentServi
 		agentService.failureChan,
 	)
 
-	apiServer, err := api.NewAPIServer(appController, config.APIConfig)
+	apiServer, err := api.NewAPIServer(appController, config.APIConfig, certBundle, token, agentService.tokenChan)
 	if err != nil {
 		return nil, err
 	}
@@ -327,7 +347,7 @@ func (agentService *AgentService) sendHealthRequest(ctx context.Context) error {
 	agentService.RUnlock()
 
 	payload := &model.HostHealthRequest{
-		HostInfo:     model.GetHostInfo(agentService.config.APIConfig.Bind),
+		HostInfo:     model.GetHostInfo(agentService.config.APIConfig.HostIP, agentService.config.APIConfig.Port),
 		DockerEngine: *dockerEngineInfo,
 		Containers:   containers,
 	}
@@ -336,13 +356,19 @@ func (agentService *AgentService) sendHealthRequest(ctx context.Context) error {
 	// 	slog.Info("report container", "containername", containerInfo.ContainerName, "state", containerInfo.State, "error", containerInfo.ErrorMsg)
 	// }
 
-	return reqclient.PostRequest(agentService.httpClient, fmt.Sprintf("%s/api/health", agentService.config.ServerConfig.Host), payload)
+	token, err := reqclient.PostRequest(agentService.httpClient, fmt.Sprintf("https://%s/api/health", agentService.config.ServerConfig.Host), payload, agentService.token)
+	if err == nil && token != "" {
+		slog.Info("new token received")
+		agentService.token = token
+		agentService.tokenChan <- token // 更新token
+	}
+	return err
 }
 
 func (agentService *AgentService) sendConfigValuesRequest(configNames []string) (map[string][]byte, error) {
 	configPair := map[string][]byte{}
 	for _, configName := range configNames {
-		data, err := reqclient.GetRequest(agentService.httpClient, fmt.Sprintf("%s/api/config/%s", agentService.config.ServerConfig.Host, configName))
+		data, err := reqclient.GetRequest(agentService.httpClient, fmt.Sprintf("https://%s/api/config/%s", agentService.config.ServerConfig.Host, configName), agentService.token)
 		if err != nil {
 			return nil, err
 		}

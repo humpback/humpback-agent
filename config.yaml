@@ -1,14 +1,15 @@
 #API
 api:
-  bind: 0.0.0.0:8018
+  port: 8018
+  hostIp: 
   mode: debug
   middlewares: ["cors", "recovery", "logger"]
   versions: ["/v1"]
-  accessToken: af1901ff0a01cdb1
 
 # 服务器配置
 server:
-  host: http://172.30.112.1:8801
+  host: 172.30.112.1:8101
+  registerToken: OR9dfc2kTTD5it51
   health:
     interval: 30s
     timeout: 15s
