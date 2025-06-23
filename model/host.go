@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strconv"
 
 	"humpback-agent/pkg/utils"
 )
@@ -48,8 +49,15 @@ type CertificateBundle struct {
 	KeyPEM   []byte         // PEM编码的私钥
 }
 
-func GetHostInfo(bind string) HostInfo {
+func GetHostInfo(hostIpStr, portStr string) HostInfo {
 	hostname, _ := os.Hostname()
+	port, _ := strconv.Atoi(portStr)
+	var hostIps []string
+	if hostIpStr != "" {
+		hostIps = []string{hostIpStr}
+	} else {
+		hostIps = utils.HostIPs()
+	}
 	osInfo := fmt.Sprintf("%s %s", runtime.GOOS, runtime.GOARCH)
 	kernelVersion := utils.HostKernelVersion()
 	totalCPU, usedCPU, cpuUsage := utils.HostCPU()
@@ -64,7 +72,7 @@ func GetHostInfo(bind string) HostInfo {
 		TotalMemory:   totalMEM,
 		UsedMemory:    usedMEM,
 		MemoryUsage:   memUsage,
-		HostIPs:       utils.HostIPs(),
-		HostPort:      utils.BindPort(bind),
+		HostIPs:       hostIps,
+		HostPort:      port,
 	}
 }
