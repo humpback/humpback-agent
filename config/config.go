@@ -26,7 +26,8 @@ var (
 )
 
 type APIConfig struct {
-	Bind        string   `json:"bind" yaml:"bind" env:"HUMPBACK_AGENT_API_BIND"`
+	Port        string   `json:"port" yaml:"port" env:"HUMPBACK_AGENT_API_PORT"`
+	HostIP      string   `json:"hostIp" yaml:"hostIp" env:"HUMPBACK_AGENT_API_HOST_IP"`
 	Mode        string   `json:"mode" yaml:"mode" env:"HUMPBACK_AGENT_API_MODE"`
 	Middlewares []string `json:"middlewares" yaml:"middlewares"`
 	Versions    []string `json:"versions" yaml:"versions"`

@@ -32,7 +32,7 @@ func loadConfig(configPath string) (*config.AppConfig, error) {
 	}
 
 	logrus.Info("-----------------HUMPBACK AGENT CONFIG-----------------")
-	logrus.Infof("API Bind: %s", appConfig.APIConfig.Bind)
+	logrus.Infof("API Bind: %s:%s", appConfig.APIConfig.HostIP, appConfig.APIConfig.Port)
 	logrus.Infof("API Versions: %v", appConfig.APIConfig.Versions)
 	logrus.Infof("API Middlewares: %v", appConfig.APIConfig.Middlewares)
 	// logrus.Infof("API Access Token: %s", appConfig.APIConfig.AccessToken)
@@ -120,13 +120,21 @@ func RegisterWithMaster(appConfig *config.AppConfig) (*model.CertificateBundle, 
 		},
 	}
 
+	var hostIps []string
+	if appConfig.HostIP != "" {
+		hostIps = []string{appConfig.HostIP}
+	} else {
+		hostIps = utils.HostIPs()
+	}
+
 	// 创建注册请求
 	reqBody := struct {
 		IpAddress []string `json:"hostIPs"`
 		Token     string   `json:"token"`
-	}{IpAddress: utils.HostIPs(), Token: appConfig.ServerConfig.RegisterToken}
+	}{IpAddress: hostIps, Token: appConfig.ServerConfig.RegisterToken}
 
 	reqBytes, _ := json.Marshal(reqBody)
+	fmt.Printf("Register request body: %s\n", string(reqBytes))
 	url := fmt.Sprintf("https://%s/api/register", appConfig.ServerConfig.Host)
 	req, _ := http.NewRequest("POST", url, bytes.NewReader(reqBytes))
 	req.Header.Set("Content-Type", "application/json")

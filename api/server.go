@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"humpback-agent/config"
 	"humpback-agent/controller"
 	"humpback-agent/model"
@@ -23,7 +24,7 @@ func NewAPIServer(controller controller.ControllerInterface, config *config.APIC
 	router := NewRouter(controller, config, token, tokenChan)
 	server := &APIServer{
 		svc: &http.Server{
-			Addr:         config.Bind,
+			Addr:         fmt.Sprintf(":%s", config.Port),
 			Handler:      router,
 			WriteTimeout: 90 * time.Second,
 			ReadTimeout:  30 * time.Second,

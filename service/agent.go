@@ -347,7 +347,7 @@ func (agentService *AgentService) sendHealthRequest(ctx context.Context) error {
 	agentService.RUnlock()
 
 	payload := &model.HostHealthRequest{
-		HostInfo:     model.GetHostInfo(agentService.config.APIConfig.Bind),
+		HostInfo:     model.GetHostInfo(agentService.config.APIConfig.HostIP, agentService.config.APIConfig.Port),
 		DockerEngine: *dockerEngineInfo,
 		Containers:   containers,
 	}
